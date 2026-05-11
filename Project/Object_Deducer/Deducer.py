@@ -1,3 +1,4 @@
+from DB_Access.DB_Controller import DB_Controller
 from Project.Specific_Searcher.Search_Master import SearchMaster
 
 class Deducer():
@@ -16,6 +17,10 @@ class Deducer():
             'Q6256': 'country'
         }
         self.searcher = SearchMaster()
+        self.db = DB_Controller()
 
     def deduce_object(self, term):
         self.searcher.search_by_category(term)
+
+    def check_term(self, term):
+        self.db.term_exists(term.term)

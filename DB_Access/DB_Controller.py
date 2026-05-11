@@ -1,5 +1,6 @@
 import requests, os, networkx as nx, matplotlib.pyplot as plt
 from rdflib import Graph, Literal, RDF, URIRef, Namespace
+from urllib.parse import quote
 from rdflib.parser import headers
 
 
@@ -10,6 +11,17 @@ class DB_Controller():
         self.LOCAL = Namespace("http://tu_proyecto.org/resource/")
         self.EXTRA = Namespace("http://tu_proyecto.org/properties/extra/")
         self.url = "http://localhost:7200/repositories/KnowledgeDB"
+
+    def clean_for_uri(self, text):
+        """
+        Convierte cualquier texto en una cadena 100% segura para ser usada como URI.
+        Reemplaza espacios por guiones bajos y codifica símbolos raros.
+        """
+        # 1. Convertimos a string y cambiamos espacios por guiones bajos
+        texto_str = str(text).replace(" ", "_")
+        # 2. quote codifica las comillas, paréntesis, tildes, etc.
+        # El parámetro safe="_-" asegura que no nos modifique los guiones
+        return quote(texto_str, safe="_-")
 
     def save_knowledge(self, ontologys):
         # Crear carpeta de debug si no existe
@@ -33,15 +45,17 @@ class DB_Controller():
             # 3. Procesamos las aristas del grafo de NetworkX
             for u, v, attr in ontology_obj.graph.edges(data=True):
                 # IMPORTANTE: replace(" ", "_") es vital para evitar el Error 400
-                sujeto = self.LOCAL[str(u).replace(" ", "_")]
-                objeto = self.LOCAL[str(v).replace(" ", "_")]
+                sujeto = self.LOCAL[self.clean_for_uri(u)]
+                objeto = self.LOCAL[self.clean_for_uri(v)]
 
                 prop_label = attr['prop']
 
                 if attr['in_pm']:
-                    pred_uri = URIRef(prop_label.replace("schema:", str(self.SCHEMA)))
+                    clean_prop = prop_label.replace("schema:", "").replace(" ", "_")
+                    pred_uri = self.SCHEMA[clean_prop]
                 else:
-                    pred_uri = self.EXTRA[prop_label.replace(" ", "_")]
+                    clean_prop = prop_label.replace(" ", "_")
+                    pred_uri = self.EXTRA[clean_prop]
 
                 rdf_g.add((sujeto, pred_uri, objeto))
 
@@ -164,6 +178,39 @@ class DB_Controller():
             nx_graph.add_edge(s_label, o_label, label=p_label)
 
         return nx_graph
+
+    def term_exists(self, term_name):
+        clean_term = term_name.replace(" ", "_")
+        uri_full = f"http://tu_proyecto.org/resource/{clean_term}"
+
+        query = f"ASK {{ <{uri_full}> ?p ?o . }}"
+
+        endpoint = self.url.replace("/statements", "")
+
+        headers = {
+            'Accept': 'application/sparql-results+json'
+        }
+
+        params = {
+            'query': query
+        }
+
+        try:
+            response = requests.get(endpoint, params=params, headers=headers)
+
+            if response.status_code == 200:
+                data = response.json()
+                # El resultado de un ASK está en la clave 'boolean'
+                exists = data.get('boolean', False)
+                print(f"¿Existe '{term_name}'? {'Sí' if exists else 'No'}")
+                return exists
+            else:
+                print(f"Error en la consulta: {response.status_code}")
+                return False
+
+        except Exception as e:
+            print(f"Error de conexión: {e}")
+            return False
 
     def draw_retrieved_graph(self, nx_graph, center_node_name):
         """Dibuja el grafo recuperado con Matplotlib."""

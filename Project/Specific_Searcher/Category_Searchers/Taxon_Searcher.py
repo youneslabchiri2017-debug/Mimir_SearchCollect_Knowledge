@@ -8,8 +8,7 @@ class Taxon_Searcher(Category_Searcher):
         self.id_cat = 'Q16521'
 
     def search(self, term):
-        pass
-        #super().search(term)
+        super().search(term)
 
     def __search_taxon__(self):
         pass

@@ -96,21 +96,22 @@ class Deducer_Wikidata(Deducer):
         return None
 
     def deduce_object(self, term_obj):
-        qids = self.__search_entities__(term_obj.term)
-        found_categories = []
+        if not self.check_term(term_obj):
+            qids = self.__search_entities__(term_obj.term)
+            found_categories = []
 
-        for qid in qids:
-            categorias = self.__get_root_category__(qid)
-            if categorias:
-                found_categories += categorias
+            for qid in qids:
+                categorias = self.__get_root_category__(qid)
+                if categorias:
+                    found_categories += categorias
 
-        # Eliminamos duplicados y actualizamos el objeto term
-        term_obj.set_categories(list(set(found_categories)))
+            # Eliminamos duplicados y actualizamos el objeto term
+            term_obj.set_categories(list(set(found_categories)))
 
-        self.__save_cache__()
+            self.__save_cache__()
 
-        # Llamamos al super para que ejecute el searcher.search_by_category(term)
-        super().deduce_object(term_obj)
-
-
-
+            # Llamamos al super para que ejecute el searcher.search_by_category(term)
+            super().deduce_object(term_obj)
+        else:
+            #Cargar los datos y luego procesarlos
+            print(f"{term_obj.term} is already in the DB")

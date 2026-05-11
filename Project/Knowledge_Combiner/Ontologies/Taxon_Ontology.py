@@ -5,6 +5,7 @@ class Taxon_Ontology(Ontology):
 
     def __init__(self, terms, key_id, nx=None):
         self.required_properties = ['name']
+        self.rdf_type = "schema:Taxon"
         self.property_map = {
             "name": "schema:name",
             "scientificName": "schema:scientificName",

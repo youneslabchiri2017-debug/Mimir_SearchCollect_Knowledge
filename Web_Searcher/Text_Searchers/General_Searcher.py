@@ -1,7 +1,7 @@
 from Web_Searcher.Text_Searchers.Text_Searcher import TextSearcher
 from Web_Searcher.Transformers.HTML_Transformer import HTML_Transformer
 
-class General_Searcher(TextSearcher):
+class General_Web_Searcher(TextSearcher):
 
     def __init__(self):
         super(TextSearcher, self).__init__()
@@ -16,4 +16,4 @@ class General_Searcher(TextSearcher):
         return self.transformer.trasnform(t_txt)
 
     def search(self, term):
-        pass
+        return []
