@@ -1,5 +1,6 @@
-import spacy, re
+import spacy, re, torch
 from Web_Searcher.Transformers.Transformer import Transformer
+from transformers import pipeline
 
 class Text_Transformer(Transformer):
 
@@ -21,7 +22,7 @@ class Text_Transformer(Transformer):
                     if child.dep_ in ("attr", "acomp"):
                         attr = " ".join([t.text for t in child.subtree])
                 if subj and attr:
-                    triples.append((self.normalize(subj), "is", self.normalize(attr)))
+                    triples.append([self.normalize(subj), "is", self.normalize(attr)])
             if token.pos_ == "VERB":
                 subj = None; obj = None
                 for child in token.children:
@@ -30,7 +31,7 @@ class Text_Transformer(Transformer):
                     if child.dep_ in ("dobj", "obj"):
                         obj = " ".join([t.text for t in child.subtree])
                 if subj and obj:
-                    triples.append((self.normalize(subj), token.lemma_, self.normalize(obj)))
+                    triples.append([self.normalize(subj), token.lemma_, self.normalize(obj)])
         return triples
 
     def transform(self, text, term):

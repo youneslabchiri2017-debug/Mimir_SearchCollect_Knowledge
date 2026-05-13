@@ -23,4 +23,4 @@ class Deducer():
         self.searcher.search_by_category(term)
 
     def check_term(self, term):
-        self.db.term_exists(term.term)
+        return self.db.term_exists(term.term)

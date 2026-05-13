@@ -202,7 +202,6 @@ class DB_Controller():
                 data = response.json()
                 # El resultado de un ASK está en la clave 'boolean'
                 exists = data.get('boolean', False)
-                print(f"¿Existe '{term_name}'? {'Sí' if exists else 'No'}")
                 return exists
             else:
                 print(f"Error en la consulta: {response.status_code}")
