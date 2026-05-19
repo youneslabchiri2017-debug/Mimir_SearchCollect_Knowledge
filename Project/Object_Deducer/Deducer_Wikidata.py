@@ -86,7 +86,7 @@ class Deducer_Wikidata(Deducer):
                 data = []
                 for result in results:
                     root_qid = result['root']['value'].split('/')[-1]
-                    data.append(root_qid)
+                    data.append(f"{root_qid}-{qid}")
                 self.cache[qid] = data
                 return data
 
@@ -106,7 +106,7 @@ class Deducer_Wikidata(Deducer):
                     found_categories += categorias
 
             # Eliminamos duplicados y actualizamos el objeto term
-            term_obj.set_categories(list(set(found_categories)))
+            term_obj.set_categories(found_categories)
 
             self.__save_cache__()
 

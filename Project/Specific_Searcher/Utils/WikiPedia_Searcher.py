@@ -5,48 +5,51 @@ class Wikipedia_Searcher(TextSearcher):
 
     def __init__(self):
         super().__init__()
+        self.wikipedia_url = "https://query.wikidata.org/sparql"
 
-    def __search_wikipedia_pages__(self, termino, n=5):
-        url = "https://en.wikipedia.org/w/api.php"
+    def __search_wikipedia_text_by_qid__(self, termino, qid, lang="en"):
+        # Configurar un User-Agent es obligatorio por políticas de la API de Wikimedia
         headers = {
-            "User-Agent": "TFM-Younes/1.0 (mailto:cherno1929@gmail.com)"
+            'User-Agent': 'MiBotEducativo/1.0 (contacto@ejemplo.com)'
         }
-        params = {
-            "action": "query",
-            "list": "search",
-            "srsearch": termino,
+
+        # PASO 1: Obtener el título de Wikipedia desde Wikidata
+        wikidata_url = "https://www.wikidata.org/w/api.php"
+        wd_params = {
+            "action": "wbgetentities",
+            "ids": qid,
+            "props": "sitelinks/urls",
+            "sitefilter": f"{lang}wiki",
             "format": "json"
         }
-        response = requests.get(url, params=params, headers=headers)
-        if response.status_code != 200:
-            return []
 
-        data = response.json()
-        results = data["query"]["search"][:n]
+        wd_res = requests.get(wikidata_url, params=wd_params, headers=headers).json()
 
-        return list(map(lambda x: f"https://en.wikipedia.org/wiki/{x['title'].replace(' ', '_')}", results))
+        try:
+            # Extraer el título exacto de la página
+            title = wd_res["entities"][qid]["sitelinks"][f"{lang}wiki"]["title"]
+        except KeyError:
+            return ""
 
-    def __obtain_text_from_pages__(self, url):
-        text = ""
-        titulo = url.split("/wiki/")[-1]
-        api_url = "https://en.wikipedia.org/w/api.php"
-        headers = {"User-Agent": "TFM-Younes/1.0 (mailto:cherno1929@gmail.com)"}
-        params = {
+        # PASO 2: Obtener el contenido de la Wikipedia
+        wp_url = f"https://{lang}.wikipedia.org/w/api.php"
+        wp_params = {
             "action": "query",
             "prop": "extracts",
-            "explaintext": True,
-            "titles": titulo,
+            "titles": title,
+            "explaintext": True,  # Devuelve texto plano en lugar de HTML
+            "exintro": False,  # False para traer todo el texto, True para solo la intro
             "format": "json"
         }
-        data = requests.get(api_url, params=params, headers=headers).json()
-        #data += reduce(lambda x, y: x['extract'] + y, data["query"]["pages"].values(), "")
-        for page in data["query"]["pages"].values():
-            text += page["extract"]
-        return text
 
-    def search(self, term):
-        t_txt = ""
-        pages = self.__search_wikipedia_pages__(term, 3)
-        for page in pages:
-            t_txt += self.__obtain_text_from_pages__(page)
-        return self.transformer.transform(t_txt, term)
+        wp_res = requests.get(wp_url, params=wp_params, headers=headers).json()
+
+        # La respuesta viene indexada por Page ID, así que tomamos el primer resultado
+        pages = wp_res["query"]["pages"]
+        page_id = next(iter(pages))
+
+        return pages[page_id].get("extract", "No se pudo extraer el contenido.")
+
+    def search(self, term, qid):
+        return self.transformer.transform(self.__search_wikipedia_text_by_qid__(term, qid), term)
+

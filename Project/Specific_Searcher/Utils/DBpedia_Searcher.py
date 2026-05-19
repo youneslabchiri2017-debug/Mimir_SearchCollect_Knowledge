@@ -2,14 +2,20 @@ import requests
 
 class DBpedia_Searcher():
 
-    def __get_knowledge_from_dbpedia__(self, term):
+    def __get_knowledge_from_dbpedia__(self, term, qid):
         url = "https://dbpedia.org/sparql"
 
         query = f"""
+        PREFIX owl: <http://www.w3.org/2002/07/owl#>
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        PREFIX wd: <http://www.wikidata.org/entity/>
 
         SELECT ?item ?property ?value ?propertyLabel ?valueLabel WHERE {{
-          ?item rdfs:label "{term}"@en .
+
+          ?item owl:sameAs wd:{qid} .
+
+          FILTER(CONTAINS(STR(?item), "dbpedia.org/resource"))
+
           ?item ?property ?value .
 
           OPTIONAL {{
@@ -49,5 +55,5 @@ class DBpedia_Searcher():
 
         return data
 
-    def search(self, term):
-        return self.__get_knowledge_from_dbpedia__(term)
+    def search(self, term, qid):
+        return self.__get_knowledge_from_dbpedia__(term, qid)

@@ -20,6 +20,7 @@ class Deducer():
         self.db = DB_Controller()
 
     def deduce_object(self, term):
+        print("Deduction Finished")
         self.searcher.search_by_category(term)
 
     def check_term(self, term):

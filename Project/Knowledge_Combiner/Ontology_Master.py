@@ -15,8 +15,7 @@ class Ontology_Master:
         self.db_acces = DB_Controller()
 
     # Se tiene que crear un nuevo grafo a partir del objeto "Termino"
-    def create_graph(self, terms, save_g = True):
-        # Persona
+    def create_and_save_oltologys(self, terms, save_g = True):
         for key_id in terms.filtered_data:
             cat = key_id.split('-')[0]
             if cat in self.ontologys:
@@ -34,6 +33,7 @@ class Ontology_Master:
     # Guarda los grafos nuevos o conocimiento ya existente
     def save_knowledge(self, ontologys):
         self.db_acces.save_knowledge(ontologys)
+        print("Knowledge saved")
 
     # Regresa lo que hay en la base de datos sobre este termino
     def load_knowledge(self, term):

@@ -1,4 +1,4 @@
-import networkx as nx
+import networkx as nx, re
 import matplotlib.pyplot as plt
 from rdflib import Graph, Literal, RDF, URIRef, Namespace
 from DB_Access.DB_Controller import DB_Controller
@@ -22,46 +22,65 @@ class Ontology:
         self.LOCAL = Namespace("http://tu_proyecto.org/resource/")
         self.EXTRA = Namespace("http://tu_proyecto.org/properties/extra/")
         self.url = "http://localhost:7200/repositories/KnowledgeDB"
-        self.graph = self.build_graph(terms.filtered_data[key_cat], terms.term)
+        self.graph = self.build_graph(terms.filtered_data[key_cat], key_cat.split("-")[1])
 
     def clean_for_uri(self, text):
-        """
-        Convierte cualquier texto en una cadena 100% segura para ser usada como URI.
-        Reemplaza espacios por guiones bajos y codifica símbolos raros.
-        """
-        # 1. Convertimos a string y cambiamos espacios por guiones bajos
+        """Convierte texto en una cadena segura para URIs de recursos (IDs)."""
         texto_str = str(text).replace(" ", "_")
-        # 2. quote codifica las comillas, paréntesis, tildes, etc.
-        # El parámetro safe="_-" asegura que no nos modifique los guiones
         return quote(texto_str, safe="_-")
+
+    def clean_property_name(self, text):
+        """
+        Limpia estrictamente los nombres de las propiedades para evitar que
+        caracteres extraños (comas, comillas, etc.) rompan el parser de GraphDB.
+        """
+        text = text.replace("schema:", "").replace("properties/extra/", "")
+        text = text.replace(" ", "_")
+        # Deja solo letras, números, guiones y guiones bajos
+        return re.sub(r'[^a-zA-Z0-9__-]', '', text)
 
     def build_graph(self, data, term):
         main_subject = self.LOCAL[term.replace(" ", "_")]
         rdf_g = Graph()
+
+        # Asignar tipo base del recurso
         type_url = self.rdf_type.replace("schema:", str(self.SCHEMA))
         rdf_g.add((main_subject, RDF.type, URIRef(type_url)))
-        for u, attr, v in data[0]:
-            sujeto = self.LOCAL[self.clean_for_uri(u)]
-            #if self.db.term_exists(term):
-            objeto = self.LOCAL[self.clean_for_uri(v)]
-            if attr in self.property_map:
-                clean_prop = attr.replace("schema:", "").replace(" ", "_")
-            else:
-                clean_prop = attr.replace(" ", "_")
-            pred_uri = self.SCHEMA[clean_prop]
 
-            rdf_g.add((sujeto, pred_uri, objeto))
-        for u, attr, v in data[1]:
-            sujeto = self.LOCAL[self.clean_for_uri(u)]
-            # if self.db.term_exists(term):
-            objeto = self.LOCAL[self.clean_for_uri(v)]
-            if attr in self.property_map:
-                clean_prop = attr.replace("schema:", "").replace(" ", "_")
-            else:
-                clean_prop = attr.replace(" ", "_")
-            pred_uri = self.EXTRA[clean_prop]
+        # --- 1. PROCESAR DATA[2] (El formato nuevo enriquecido de 5 elementos) ---
+        if len(data) > 2 and data[2]:
+            for u, attr, v, is_literal, qid in data[2]:
+                clean_attr = self.clean_property_name(attr)
+                pred_uri = self.SCHEMA[clean_attr]
 
-            rdf_g.add((sujeto, pred_uri, objeto))
+                if is_literal == 'literal':
+                    # ERROR ARREGLADO: Usamos paréntesis () y guardamos el texto 'v' original y limpio
+                    rdf_g.add((main_subject, pred_uri, Literal(v)))
+                else:
+                    # Si es una entidad y tenemos su QID, lo ideal es usar el QID como URI local
+                    rdf_g.add((main_subject, pred_uri, self.LOCAL[qid]))
+
+        # --- 2. PROCESAR DATA[0] (Formato antiguo/tradicional de 3 elementos) ---
+        if len(data) > 0 and data[0]:
+            for u, attr, v in data[0]:
+                clean_attr = self.clean_property_name(attr)
+                pred_uri = self.SCHEMA[clean_attr]
+
+                # CORRECCIÓN CRÍTICA: Paréntesis en lugar de corchetes.
+                # Guardamos el valor real 'v' como texto en el Literal, NO la URI formateada.
+                objeto = Literal(v)
+                rdf_g.add((main_subject, pred_uri, objeto))
+
+        # --- 3. PROCESAR DATA[1] (Formato antiguo/extra de 3 elementos) ---
+        if len(data) > 1 and data[1]:
+            for u, attr, v in data[1]:
+                clean_attr = self.clean_property_name(attr)
+                pred_uri = self.EXTRA[clean_attr]
+
+                # CORRECCIÓN CRÍTICA: Paréntesis en lugar de corchetes y texto plano.
+                objeto = Literal(v)
+                rdf_g.add((main_subject, pred_uri, objeto))
+
         return rdf_g
 
 

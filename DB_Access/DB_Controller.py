@@ -30,17 +30,17 @@ class DB_Controller():
 
         for id in ontologys:
             try:
-                # Usamos UTF-8 para evitar errores con tildes o caracteres especiales
-                data_turtle = ontologys[id].graph.serialize(format='turtle')
-
                 # --- GUARDADO LOCAL PARA DEBUG ---
                 '''
-                file_path = f"debug_turtles/{clean_term}.ttl"
+                file_path = f"debug_turtles/{id}.ttl"
                 with open(file_path, "w", encoding="utf-8") as f:
                     f.write(data_turtle)
                 print(f"Archivo guardado localmente en: {file_path}")
                 '''
                 # ----------------------------------
+
+                # Usamos UTF-8 para evitar errores con tildes o caracteres especiales
+                data_turtle = ontologys[id].graph.serialize(format='turtle')
 
                 # 5. Envío a GraphDB
                 headers = {'Content-Type': 'text/turtle'}

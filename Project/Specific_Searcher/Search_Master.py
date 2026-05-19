@@ -20,22 +20,23 @@ class SearchMaster():
         if len(term.term_categories) > 0:
             for category in term.term_categories:
                 try:
-                    if category == 'Q5':
+                    if 'Q5-' in category:
                         self.person_searcher.search(term)
-                    elif category == 'Q515' or category == 'Q6256':
+                    elif 'Q515-' in category or 'Q6256-' in category:
                         self.country_Searcher.search(term)
-                    elif category == 'Q16521':
+                    elif 'Q16521-' in category:
                         self.taxon_searcher.search(term)
                 except Exception as e:
                     print(e)
             self.filter.filter(term)
             old_graph = self.knowledge_m.load_knowledge(term)
             # El termino ya existe
+            print("Search Finished")
             if old_graph:
                 new_graph = self.knowledge_m.create_graph(term)
                 self.knowledge_m.combine_knowledge(new_graph, old_graph)
                 self.knowledge_m.save_knowledge(new_graph)
             # El termino no existe
             else:
-                new_graph = self.knowledge_m.create_graph(term)
-                self.knowledge_m.save_knowledge(new_graph)
+                self.knowledge_m.create_and_save_oltologys(term)
+
