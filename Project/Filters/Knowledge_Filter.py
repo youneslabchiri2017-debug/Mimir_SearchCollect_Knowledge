@@ -7,7 +7,7 @@ class Knowledge_Filter:
     def filter(self, terms):
         for key_id in terms.data:
             for key_source in terms.data[key_id]:
-                if key_source != 'wikidata':
+                if key_source != 'wikidata' and key_source != 'dbpedia':
                     for tup in terms.data[key_id][key_source]:
                         if len(tup) == 3:
                             if terms.term in tup[0] or terms.term in tup[2]:
@@ -22,5 +22,7 @@ class Knowledge_Filter:
                                     terms.filtered_data[key_id] = {0:[], 1:[]}
             if key_id in terms.filtered_data:
                 terms.filtered_data[key_id][2] = terms.data[key_id]['wikidata']
+                terms.filtered_data[key_id][3] = terms.data[key_id]['dbpedia']
             else:
-                terms.filtered_data[key_id] = {0:[], 1:[], 2:terms.data[key_id]['wikidata']}
+                terms.filtered_data[key_id] = {0:[], 1:[], 2:terms.data[key_id]['wikidata'], 3:terms.data[key_id]['dbpedia']}
+

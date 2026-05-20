@@ -30,15 +30,6 @@ class DB_Controller():
 
         for id in ontologys:
             try:
-                # --- GUARDADO LOCAL PARA DEBUG ---
-                '''
-                file_path = f"debug_turtles/{id}.ttl"
-                with open(file_path, "w", encoding="utf-8") as f:
-                    f.write(data_turtle)
-                print(f"Archivo guardado localmente en: {file_path}")
-                '''
-                # ----------------------------------
-
                 # Usamos UTF-8 para evitar errores con tildes o caracteres especiales
                 data_turtle = ontologys[id].graph.serialize(format='turtle')
 
@@ -50,6 +41,13 @@ class DB_Controller():
 
                 if response.status_code == 400:
                     print(f"Respuesta del servidor (Error 400): {response.text}")
+
+                # --- GUARDADO LOCAL PARA DEBUG ---
+                file_path = f"debug_turtles/{id}.ttl"
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write(data_turtle)
+                print(f"Archivo guardado localmente en: {file_path}")
+                # ----------------------------------
 
             except Exception as e:
                 print(f"Error procesando ontología {id}: {e}")

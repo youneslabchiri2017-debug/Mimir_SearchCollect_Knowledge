@@ -1,3 +1,4 @@
+import time
 from ddgs import DDGS
 from Project.Specific_Searcher.Utils.DBpedia_Searcher import DBpedia_Searcher
 from Project.Specific_Searcher.Utils.WikiData_Searcher import WikiData_Searcher
@@ -26,27 +27,31 @@ class Category_Searcher():
     def search(self, term):
         for key in term.data:
             qid = key.split('-')[1]
+            '''
             try:
                 term.data[key]['wikidata'] = self.wiki_searcher.search(term.term, qid)
             except Exception as e:
                 print(e)
-            '''
+
             try:
                 term.data[key]['dbpedia'] = self.dbpedia_searcher.search(term.term, qid)
             except Exception as e:
                 print(e)
+            '''
+            '''
             try:
                 term.data[key]['wikipedia'] = self.wikipedia_searcher.search(term.term, qid)
             except Exception as e:
                 print(e)
+            
             try:
                 term.data[key]['special'] = self.special_search(term)
             except Exception as e:
                 print(e)
-            
+            '''
             try:
                 term.data[key]['web_search'] = self.general_web_searcher.search(term.term)
             except Exception as e:
                 print(e)
-            '''
+
 

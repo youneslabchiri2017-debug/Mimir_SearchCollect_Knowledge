@@ -2,5 +2,5 @@
 
 class Transformer():
 
-    def trasnform(self, text):
+    def transform(self, text):
         pass

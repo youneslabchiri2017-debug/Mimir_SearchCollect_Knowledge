@@ -10,10 +10,14 @@ class General_Web_Searcher(TextSearcher):
 
     def __search_in_pages__(self, urls, term):
         tuples = []
+        texts = []
         for url in urls:
             txt = self.web_scrapper.trasnform(url)
             if txt:
-                tuples += self.ollama_transformer.transform(txt, term)
+                texts.append(txt)
+        if len(texts) > 0:
+            for text in texts:
+                tuples += self.ollama_transformer.transform(text, term)
         return tuples
 
     def seach_pages(self, term, max_res=5):

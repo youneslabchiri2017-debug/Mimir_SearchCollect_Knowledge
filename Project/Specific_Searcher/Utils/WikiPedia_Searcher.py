@@ -51,5 +51,5 @@ class Wikipedia_Searcher(TextSearcher):
         return pages[page_id].get("extract", "No se pudo extraer el contenido.")
 
     def search(self, term, qid):
-        return self.transformer.transform(self.__search_wikipedia_text_by_qid__(term, qid), term)
+        return self.ollama_transformer.transform(self.__search_wikipedia_text_by_qid__(term, qid), term)
 

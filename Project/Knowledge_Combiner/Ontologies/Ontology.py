@@ -1,6 +1,6 @@
 import networkx as nx, re
 import matplotlib.pyplot as plt
-from rdflib import Graph, Literal, RDF, URIRef, Namespace
+from rdflib import Graph, Literal, RDF, URIRef, Namespace, OWL
 from DB_Access.DB_Controller import DB_Controller
 from urllib.parse import quote
 
@@ -18,10 +18,11 @@ class Ontology:
         self.db = db
         self.term = terms.term
         self.nx = nx
-        self.SCHEMA = Namespace("http://schema.org/")
+        self.SCHEMA = Namespace("http://schema.org/rdf/")
         self.LOCAL = Namespace("http://tu_proyecto.org/resource/")
-        self.EXTRA = Namespace("http://tu_proyecto.org/properties/extra/")
+        self.EXTRA = Namespace("http://tu_proyecto.org/rdf-schema/")
         self.url = "http://localhost:7200/repositories/KnowledgeDB"
+        self.WikiData = Namespace("https://www.wikidata.org/wiki/")
         self.graph = self.build_graph(terms.filtered_data[key_cat], key_cat.split("-")[1])
 
     def clean_for_uri(self, text):
@@ -46,19 +47,39 @@ class Ontology:
         # Asignar tipo base del recurso
         type_url = self.rdf_type.replace("schema:", str(self.SCHEMA))
         rdf_g.add((main_subject, RDF.type, URIRef(type_url)))
+        rdf_g.add((main_subject, OWL.sameAs, URIRef(f"https://www.wikidata.org/wiki/{term}")))
+        if data[3] and len(data[3]) > 0:
+            rdf_g.add((main_subject, OWL.sameAs, URIRef(f"https://dbpedia.org/page/{data[3][0][0]}")))
 
-        # --- 1. PROCESAR DATA[2] (El formato nuevo enriquecido de 5 elementos) ---
+        # --- 1. PROCESAR DATA[2] (Procedente de Wikidata) ---
         if len(data) > 2 and data[2]:
             for u, attr, v, is_literal, qid in data[2]:
                 clean_attr = self.clean_property_name(attr)
                 pred_uri = self.SCHEMA[clean_attr]
-
-                if is_literal == 'literal':
-                    # ERROR ARREGLADO: Usamos paréntesis () y guardamos el texto 'v' original y limpio
-                    rdf_g.add((main_subject, pred_uri, Literal(v)))
-                else:
+                pred_uri_rdfs = self.EXTRA[clean_attr]
+                rdf_g.add((main_subject, pred_uri_rdfs, Literal(v)))
+                if is_literal == 'entity':
                     # Si es una entidad y tenemos su QID, lo ideal es usar el QID como URI local
                     rdf_g.add((main_subject, pred_uri, self.LOCAL[qid]))
+                    rdf_g.add((self.LOCAL[qid], OWL.sameAs, URIRef(f"https://www.wikidata.org/wiki/{qid}")))
+                    rdf_g.add((self.LOCAL[qid], self.EXTRA["Label"], Literal(v)))
+                if attr == "given name":
+                    rdf_g.add((main_subject, self.EXTRA["Label"], Literal(v)))
+
+        # --- 2. PROCESAR DATA[3] (Procedente de DBPedia) ---
+        if len(data) > 0 and data[3]:
+            for u, attr, v in data[3]:
+                if attr != 'Link from a Wikipage to an external page':
+                    clean_attr = self.clean_property_name(attr)
+                    pred_uri = self.EXTRA[clean_attr]
+
+                    # CORRECCIÓN CRÍTICA: Paréntesis en lugar de corchetes.
+                    # Guardamos el valor real 'v' como texto en el Literal, NO la URI formateada.
+                    objeto = Literal(v)
+                    rdf_g.add((main_subject, pred_uri, objeto))
+                else:
+                    rdf_g.add((main_subject, OWL.sameAs, URIRef(v)))
+
 
         # --- 2. PROCESAR DATA[0] (Formato antiguo/tradicional de 3 elementos) ---
         if len(data) > 0 and data[0]:
