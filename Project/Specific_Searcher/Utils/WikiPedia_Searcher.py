@@ -29,7 +29,7 @@ class Wikipedia_Searcher(TextSearcher):
             # Extraer el título exacto de la página
             title = wd_res["entities"][qid]["sitelinks"][f"{lang}wiki"]["title"]
         except KeyError:
-            return ""
+            return []
 
         # PASO 2: Obtener el contenido de la Wikipedia
         wp_url = f"https://{lang}.wikipedia.org/w/api.php"
@@ -43,6 +43,9 @@ class Wikipedia_Searcher(TextSearcher):
         }
 
         wp_res = requests.get(wp_url, params=wp_params, headers=headers).json()
+
+        if wp_res.status_code != 200:
+            return []
 
         # La respuesta viene indexada por Page ID, así que tomamos el primer resultado
         pages = wp_res["query"]["pages"]

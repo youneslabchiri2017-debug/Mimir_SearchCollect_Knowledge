@@ -48,59 +48,72 @@ class Ontology:
         type_url = self.rdf_type.replace("schema:", str(self.SCHEMA))
         rdf_g.add((main_subject, RDF.type, URIRef(type_url)))
         rdf_g.add((main_subject, OWL.sameAs, URIRef(f"https://www.wikidata.org/wiki/{term}")))
-        if data[3] and len(data[3]) > 0:
+        if 3 in data and len(data[3]) > 0:
             rdf_g.add((main_subject, OWL.sameAs, URIRef(f"https://dbpedia.org/page/{data[3][0][0]}")))
 
         # --- 1. PROCESAR DATA[2] (Procedente de Wikidata) ---
-        if len(data) > 2 and data[2]:
+        if len(data) > 2 and 2 in data:
             for u, attr, v, is_literal, qid in data[2]:
-                clean_attr = self.clean_property_name(attr)
-                pred_uri = self.SCHEMA[clean_attr]
-                pred_uri_rdfs = self.EXTRA[clean_attr]
-                rdf_g.add((main_subject, pred_uri_rdfs, Literal(v)))
-                if is_literal == 'entity':
-                    # Si es una entidad y tenemos su QID, lo ideal es usar el QID como URI local
-                    rdf_g.add((main_subject, pred_uri, self.LOCAL[qid]))
-                    rdf_g.add((self.LOCAL[qid], OWL.sameAs, URIRef(f"https://www.wikidata.org/wiki/{qid}")))
-                    rdf_g.add((self.LOCAL[qid], self.EXTRA["Label"], Literal(v)))
-                if attr == "given name":
-                    rdf_g.add((main_subject, self.EXTRA["Label"], Literal(v)))
+                try:
+                    clean_attr = self.clean_property_name(attr)
+                    pred_uri = self.SCHEMA[clean_attr]
+                    pred_uri_rdfs = self.EXTRA[clean_attr]
+                    rdf_g.add((main_subject, pred_uri_rdfs, Literal(v)))
+                    if is_literal == 'entity':
+                        # Si es una entidad y tenemos su QID, lo ideal es usar el QID como URI local
+                        rdf_g.add((main_subject, pred_uri, self.LOCAL[qid]))
+                        rdf_g.add((self.LOCAL[qid], OWL.sameAs, URIRef(f"https://www.wikidata.org/wiki/{qid}")))
+                        rdf_g.add((self.LOCAL[qid], self.EXTRA["Label"], Literal(v)))
+                except:
+                    print("Something went wrong")
+            names = list(filter(lambda x: x[1] in {"short name", "taxon name", "given name"}, data[2]))
+            for name in names:
+                rdf_g.add((main_subject, self.EXTRA["Label"], Literal(name[2])))
 
         # --- 2. PROCESAR DATA[3] (Procedente de DBPedia) ---
-        if len(data) > 0 and data[3]:
+        if len(data) > 0 and 3 in data:
             for u, attr, v in data[3]:
-                if attr != 'Link from a Wikipage to an external page':
+                try:
+                    if attr != 'Link from a Wikipage to an external page':
+                        clean_attr = self.clean_property_name(attr)
+                        pred_uri = self.EXTRA[clean_attr]
+
+                        # CORRECCIÓN CRÍTICA: Paréntesis en lugar de corchetes.
+                        # Guardamos el valor real 'v' como texto en el Literal, NO la URI formateada.
+                        objeto = Literal(v)
+                        rdf_g.add((main_subject, pred_uri, objeto))
+                    else:
+                        rdf_g.add((main_subject, OWL.sameAs, URIRef(v)))
+                except:
+                    print("Something went wrong")
+
+
+        # --- 2. PROCESAR DATA[0] (Formato antiguo/tradicional de 3 elementos) ---
+        if len(data) > 0 and 0 in data:
+            for u, attr, v in data[0]:
+                try:
                     clean_attr = self.clean_property_name(attr)
-                    pred_uri = self.EXTRA[clean_attr]
+                    pred_uri = self.SCHEMA[clean_attr]
 
                     # CORRECCIÓN CRÍTICA: Paréntesis en lugar de corchetes.
                     # Guardamos el valor real 'v' como texto en el Literal, NO la URI formateada.
                     objeto = Literal(v)
                     rdf_g.add((main_subject, pred_uri, objeto))
-                else:
-                    rdf_g.add((main_subject, OWL.sameAs, URIRef(v)))
-
-
-        # --- 2. PROCESAR DATA[0] (Formato antiguo/tradicional de 3 elementos) ---
-        if len(data) > 0 and data[0]:
-            for u, attr, v in data[0]:
-                clean_attr = self.clean_property_name(attr)
-                pred_uri = self.SCHEMA[clean_attr]
-
-                # CORRECCIÓN CRÍTICA: Paréntesis en lugar de corchetes.
-                # Guardamos el valor real 'v' como texto en el Literal, NO la URI formateada.
-                objeto = Literal(v)
-                rdf_g.add((main_subject, pred_uri, objeto))
+                except:
+                    print("Something went wrong")
 
         # --- 3. PROCESAR DATA[1] (Formato antiguo/extra de 3 elementos) ---
-        if len(data) > 1 and data[1]:
+        if len(data) > 1 and 1 in data:
             for u, attr, v in data[1]:
-                clean_attr = self.clean_property_name(attr)
-                pred_uri = self.EXTRA[clean_attr]
+                try:
+                    clean_attr = self.clean_property_name(attr)
+                    pred_uri = self.EXTRA[clean_attr]
 
-                # CORRECCIÓN CRÍTICA: Paréntesis en lugar de corchetes y texto plano.
-                objeto = Literal(v)
-                rdf_g.add((main_subject, pred_uri, objeto))
+                    # CORRECCIÓN CRÍTICA: Paréntesis en lugar de corchetes y texto plano.
+                    objeto = Literal(v)
+                    rdf_g.add((main_subject, pred_uri, objeto))
+                except:
+                    print("Something went wrong")
 
         return rdf_g
 

@@ -21,7 +21,8 @@ class Country_Searcher(Category_Searcher):
         try:
             # Pedimos la info (usamos fullText=true para evitar confusiones)
             response = requests.get(f"{self.base_url}{country_name}?fullText=true")
-            if response.status_code != 200: return []
+            if response.status_code != 200:
+                return []
 
             data = response.json()[0]
             name = data['name']['common']

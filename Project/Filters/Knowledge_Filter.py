@@ -15,14 +15,18 @@ class Knowledge_Filter:
                                     terms.filtered_data[key_id][0].append(tup)
                                 else:
                                     terms.filtered_data[key_id] = {0:[], 1:[]}
+                                    terms.filtered_data[key_id][0].append(tup)
                             else:
                                 if key_id in terms.filtered_data:
                                     terms.filtered_data[key_id][1].append(tup)
                                 else:
                                     terms.filtered_data[key_id] = {0:[], 1:[]}
+                                    terms.filtered_data[key_id][1].append(tup)
             if key_id in terms.filtered_data:
-                terms.filtered_data[key_id][2] = terms.data[key_id]['wikidata']
-                terms.filtered_data[key_id][3] = terms.data[key_id]['dbpedia']
+                if 'wikidata' in terms.filtered_data[key_id]:
+                    terms.filtered_data[key_id][2] = terms.data[key_id]['wikidata']
+                if 'dbpedia' in terms.filtered_data[key_id]:
+                    terms.filtered_data[key_id][3] = terms.data[key_id]['dbpedia']
             else:
-                terms.filtered_data[key_id] = {0:[], 1:[], 2:terms.data[key_id]['wikidata'], 3:terms.data[key_id]['dbpedia']}
+                terms.filtered_data[key_id] = {0:[], 1:[], 2:terms.data[key_id]['wikidata'] if 'wikidata' in terms.data[key_id] else [], 3:terms.data[key_id]['dbpedia'] if 'dbpedia' in terms.data[key_id] else []}
 
