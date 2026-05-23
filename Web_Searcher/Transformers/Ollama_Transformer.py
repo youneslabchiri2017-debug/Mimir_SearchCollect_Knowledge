@@ -23,6 +23,19 @@ class Ollama_Transformer(Transformer):
             }
             Do not add any conversational text, greetings, or notes."""
         }
+        self.system_prompt_2 = (
+            "You are an expert writer in transforming structured data into human language."
+
+            "Your task is to take a list of attributes [property, value] and write a biographical or descriptive summary that is fluent, natural, and cohesive in Spanish."
+            
+            "CRITICAL RULES:\n"
+            
+            "1. Write in continuous paragraphs. DO NOT use bullet points, dashes, or lists.\n"
+            
+            "2. Be strict: base your work ONLY on the provided data. Do not invent external facts.\n"
+            
+            "3. Integrate the data elegantly (e.g., instead of saying 'capital Madrid,' say 'Its capital is Madrid')."
+        )
 
     def _clean_input_text(self, text):
         """Limpia basura común de extracciones HTML/Scraping"""
@@ -103,3 +116,21 @@ class Ollama_Transformer(Transformer):
 
         return all_results
 
+    def reverse_transform(self, data, term):
+        contexto_datos = ""
+        for info in data.values():
+            for tuple in info:
+                contexto_datos += f"{tuple['pt']['value']} - {tuple['o']['value']}\n"
+        user_prompt = f"Write a text of {term}.\nUsing only the following data:\n{contexto_datos}"
+
+        messages = [{"role": "system", "content": self.system_prompt_2},
+                   {"role": "user", "content": user_prompt}]
+
+        try:
+            response = ollama.chat(
+                model=self.model_name,
+                messages=messages
+            )
+            return response['message']['content'].strip()
+        except Exception as e:
+            return f"Error {e}"

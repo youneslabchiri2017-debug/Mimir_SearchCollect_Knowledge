@@ -12,6 +12,102 @@ class DB_Controller():
         self.EXTRA = Namespace("http://tu_proyecto.org/properties/extra/")
         self.url = "http://localhost:7200/repositories/KnowledgeDB"
 
+    def get_id_of_term(self, term):
+        # QUITAMOS el replace(" ", "_") para el texto de búsqueda.
+        # El usuario debe buscar el texto real con sus espacios (ej: "Okapia johnstoni")
+        term_buscado = term.strip().lower()
+
+        # Usamos tu prefijo ns1 que es el que contiene "Label" en mayúscula,
+        # o cámbialo a rdfs:label (en minúscula) si usas el estándar.
+        query = f"""
+            PREFIX ns1: <http://tu_proyecto.org/rdf-schema/>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+            SELECT ?s WHERE {{
+                # Buscamos de forma segura pasando el label de la BD a minúsculas
+                ?s ns1:Label ?label .
+                FILTER(LCASE(STR(?label)) = "{term_buscado}")
+            }}
+            """
+
+        endpoint = self.url.replace("/statements", "")
+
+        headers = {
+            'Accept': 'application/sparql-results+json',
+        }
+
+        params = {
+            'query': query
+        }
+
+        try:
+            response = requests.get(endpoint, params=params, headers=headers)
+
+            if response.status_code == 200:
+                data = response.json()
+                bindings = data.get("results", {}).get("bindings", [])
+
+                # Opcional: En lugar de devolver todo el JSON crudo,
+                # podemos extraer directamente el ID o URI limpia para facilitarte la vida
+                if bindings:
+                    # Devuelve una lista con las URIs encontradas (ej: ['http://tu_proyecto.org/resource/Q1951683'])
+                    data = [row["s"]["value"] for row in bindings]
+                    return list(map(lambda x: x.split('/')[-1], data))
+
+                return []  # Retorna lista vacía si no hay resultados
+            else:
+                print(f"Error al consultar: {response.status_code} - {response.text}")
+                return None
+
+        except Exception as e:
+            print(f"Error en la conexión SPARQL: {e}")
+            return None
+
+    def get_tuples_of_term(self, qid):
+        # Usamos tu prefijo ns1 que es el que contiene "Label" en mayúscula,
+        # o cámbialo a rdfs:label (en minúscula) si usas el estándar.
+        query = f"""
+                    PREFIX res: <http://tu_proyecto.org/resource/>
+
+SELECT ?pt ?o WHERE {{
+  # 1. Buscamos las tripletas del recurso
+              res:{qid} ?p ?o .
+              FILTER(isLiteral(?o))
+              
+              # 2. Limpiamos la URI para quedarnos solo con el nombre del predicado
+              BIND(REPLACE(STR(?p), "^.*[/#]", "") AS ?pt)
+              
+              # 3. Filtros antibasura (opcional, para evitar ruido)
+              FILTER(!REGEX(?pt, "category|wikimedia|wiki|pageid|revision|image", "i"))
+                }}
+                    """
+
+        endpoint = self.url.replace("/statements", "")
+        headers = {'Accept': 'application/sparql-results+json',}
+        params = {'query': query}
+
+        try:
+            response = requests.get(endpoint, params=params, headers=headers)
+
+            if response.status_code == 200:
+                data = response.json()
+                bindings = data.get("results", {}).get("bindings", [])
+
+                # Opcional: En lugar de devolver todo el JSON crudo,
+                # podemos extraer directamente el ID o URI limpia para facilitarte la vida
+                if bindings:
+                    # Devuelve una lista con las URIs encontradas (ej: ['http://tu_proyecto.org/resource/Q1951683'])
+                    return bindings
+
+                return []  # Retorna lista vacía si no hay resultados
+            else:
+                print(f"Error al consultar: {response.status_code} - {response.text}")
+                return None
+
+        except Exception as e:
+            print(f"Error en la conexión SPARQL: {e}")
+            return None
+
     def clean_for_uri(self, text):
         """
         Convierte cualquier texto en una cadena 100% segura para ser usada como URI.

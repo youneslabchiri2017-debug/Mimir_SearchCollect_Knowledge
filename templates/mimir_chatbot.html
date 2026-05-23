@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grafo Cognitivo Chat</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mimir.css') }}">
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>Mi Grafo Semántico</h2>
+        <button class="new-chat-btn" onclick="clearChat()">+ Nuevo Chat</button>
+    </div>
+
+    <div class="chat-container">
+        <div class="chat-messages" id="chat-messages">
+            <div class="message ai-message">¡Hola! Dime qué término o entidad deseas consultar en la Base de Datos. Buscaremos sus tripletas y te haré un resumen estructurado.</div>
+        </div>
+
+        <div class="chat-input-container">
+            <div class="input-box">
+                <textarea id="user-input" placeholder="Escribe un término (ej: Oscar, Okapia...)" rows="1" onkeydown="handleKeyPress(event)"></textarea>
+                <button onclick="sendMessage()">Enviar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/mimir.js') }}"></script>
+</body>
+</html>
