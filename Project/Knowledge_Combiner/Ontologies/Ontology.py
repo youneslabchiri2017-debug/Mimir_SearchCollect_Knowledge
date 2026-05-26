@@ -24,6 +24,7 @@ class Ontology:
         self.url = "http://localhost:7200/repositories/KnowledgeDB"
         self.WikiData = Namespace("https://www.wikidata.org/wiki/")
         self.graph = self.build_graph(terms.filtered_data[key_cat], key_cat.split("-")[1])
+        self.saved_in_db = False
 
     def clean_for_uri(self, text):
         """Convierte texto en una cadena segura para URIs de recursos (IDs)."""

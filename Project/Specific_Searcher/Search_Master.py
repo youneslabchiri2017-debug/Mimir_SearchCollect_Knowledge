@@ -28,6 +28,7 @@ class SearchMaster():
                         self.taxon_searcher.search(term)
                 except Exception as e:
                     print(e)
+            '''
             self.filter.filter(term)
             old_graph = self.knowledge_m.load_knowledge(term)
             # El termino ya existe
@@ -39,4 +40,4 @@ class SearchMaster():
             # El termino no existe
             else:
                 self.knowledge_m.create_and_save_oltologys(term)
-
+            '''

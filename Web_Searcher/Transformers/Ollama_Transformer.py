@@ -6,125 +6,84 @@ class Ollama_Transformer(Transformer):
     def __init__(self):
         self.model_name = "llama3.2:3b"
 
-        # REGLAS DEL SISTEMA OPTIMIZADAS
-        self.system_prompt = {
+        # ... [MANTÉN TUS PROMPTS ANTERIORES AQUÍ] ...
+
+        # NUEVO PROMPT: El Ojo (Extractor de Entidades)
+        # NUEVO PROMPT: El Ojo (Extractor Avanzado JSON)
+        self.system_prompt_extractor = {
             "role": "system",
-            "content": """You are an expert Data Extraction AI. 
-            Your ONLY job is to extract knowledge triplets from the provided text based STRICTLY on the entity requested by the user.
-
-            CRITICAL RULE: The subject (the first element) of EVERY SINGLE TRIPLET must be EXACTLY the requested entity name. Do not use pronouns like "it", "he", "she", "they", or generic terms like "the country", "the city". Replace them always with the exact entity name.
-
-            You must output EXACTLY in this JSON format:
-            {
-              "triplets": [
-                ["EXACT_ENTITY_NAME", "relation", "object"],
-                ["EXACT_ENTITY_NAME", "relation", "object"]
-              ]
-            }
-            Do not add any conversational text, greetings, or notes."""
+            "content": (
+                "You are an advanced NLP routing assistant. Read the user input and extract the core entities, "
+                "the user's intent, and any disambiguation context. "
+                "Return EXACTLY a JSON object with this structure:\n"
+                "{\n"
+                '  "intent": "describe" or "relate",\n'
+                '  "entities": ["Full Entity Name 1", "Full Entity Name 2"],\n'
+                '  "context": "Any specific type requested (e.g., Country, Person, Movie) or null"\n'
+                "}\n\n"
+                "EXAMPLES:\n"
+                "User: 'Can you tell me who Pedro Sanchez is?' -> {\"intent\": \"describe\", \"entities\": [\"Pedro Sanchez\"], \"context\": \"Person\"}\n"
+                "User: 'I want you to tell me about Jordan - Country' -> {\"intent\": \"describe\", \"entities\": [\"Jordan\"], \"context\": \"Country\"}\n"
+                "User: 'Tell me about the relationship between France and Spain' -> {\"intent\": \"relate\", \"entities\": [\"Francia\", \"España\"], \"context\": null}"
+            )
         }
-        self.system_prompt_2 = (
-            "You are an expert writer in transforming structured data into human language."
+        # SYSTEM PROMPT: Mimir's Personality (Optimized in English, responds in Spanish)
+        self.system_prompt_mimir = {
+            "role": "system",
+            "content": (
+                "You are Mimir, the ancient and wise Norse god of knowledge. You are a reanimated head "
+                "resting on the hip of the God of War, but you possess the wisdom of all the Nine Realms. "
+                "A traveler has asked you about a term, and you must answer using STRICTLY the provided "
+                "list of attributes [property, value].\n\n"
+                "CRITICAL RULES:\n"
+                "1. Greet or speak like Mimir (e.g., 'Ah, a seeker of knowledge!', 'Listen closely, brother/brother-in-arms', "
+                "'By Odin's beard!', 'Aye, I can tell you about that...'), but keep it concise and immersive.\n"
+                "2. Write the description in fluent, natural, and cohesive paragraphs IN SPANISH. "
+                "DO NOT use bullet points, dashes, or numbered lists.\n"
+                "3. DO NOT invent external facts, do not extrapolate, and do not hallucinate data. If a detail "
+                "is not explicitly present in the provided attributes, you do not know it.\n"
+                "4. Seamlessly integrate the structured data into an elegant, story-like narrative"
+            )
+        }
 
-            "Your task is to take a list of attributes [property, value] and write a biographical or descriptive summary that is fluent, natural, and cohesive in Spanish."
-            
-            "CRITICAL RULES:\n"
-            
-            "1. Write in continuous paragraphs. DO NOT use bullet points, dashes, or lists.\n"
-            
-            "2. Be strict: base your work ONLY on the provided data. Do not invent external facts.\n"
-            
-            "3. Integrate the data elegantly (e.g., instead of saying 'capital Madrid,' say 'Its capital is Madrid')."
-        )
+    # ... [MANTÉN TUS FUNCIONES _clean_input_text, _chunk_text y __extract_triples__ AQUÍ] ...
 
-    def _clean_input_text(self, text):
-        """Limpia basura común de extracciones HTML/Scraping"""
-        text = "".join(ch for ch in text if unicodedata.category(ch)[0] != "C")
-        text = re.sub(r'\s+', ' ', text).strip()
-        return text
-
-    def _chunk_text(self, text, max_chars=800):
+    def extract_entity_data(self, user_input):
         """
-        Fragmentador inteligente. Divide el texto por frases (puntos)
-        para no cortar ideas a la mitad, agrupándolas en bloques de tamaño máximo.
+        Lee la frase y devuelve un diccionario con las entidades, la intención y el contexto.
         """
-        # Separamos el texto usando puntos, signos de exclamación o interrogación seguidos de espacio
-        sentences = re.split(r'(?<=[.!?])\s+', text)
-        chunks = []
-        current_chunk = ""
-
-        for sentence in sentences:
-            # Si añadir la frase supera el límite, guardamos el chunk actual y empezamos uno nuevo
-            if len(current_chunk) + len(sentence) < max_chars:
-                current_chunk += " " + sentence if current_chunk else sentence
-            else:
-                if current_chunk.strip():
-                    chunks.append(current_chunk.strip())
-                current_chunk = sentence
-
-        # Añadimos el último fragmento si quedó algo
-        if current_chunk.strip():
-            chunks.append(current_chunk.strip())
-
-        return chunks
-
-    def __extract_triples__(self, text, term):
-        # Configuramos los mensajes inyectando las instrucciones estrictas de sujeto
         messages = [
-            self.system_prompt,
-            {
-                "role": "user",
-                "content": f"Extract triplets where the subject is EXACTLY '{term}' from this text:\n{text}"
-            }
+            self.system_prompt_extractor,
+            {"role": "user", "content": user_input}
         ]
-
         try:
-            # Forzamos formato JSON a nivel de motor de Ollama
             response = ollama.chat(
                 model=self.model_name,
                 messages=messages,
-                format='json'
+                format='json' # Forzamos salida estructurada
             )
-
-            raw_content = response['message']['content']
-            data = json.loads(raw_content)
-
-            # Post-procesamiento de seguridad: Si el modelo por error usó minúsculas
-            # o se equivocó en el sujeto, lo sobreescribimos a la fuerza para proteger tu Ontología.
-            triplets_limpios = []
-            for t in data.get("triplets", []):
-                if len(t) == 3:
-                    # Forzamos que la primera posición sea el término exacto
-                    triplets_limpios.append([term, t[1], t[2]])
-
-            return triplets_limpios
-
+            data = json.loads(response['message']['content'])
+            return data
         except Exception as e:
-            print(f"Error procesando fragmento para el término '{term}': {e}")
-            return []
+            print(f"Error extrayendo datos: {e}")
+            return None
 
-    def transform(self, text, term):
-        text_limpio = self._clean_input_text(text)
-
-        # NUEVA LÓGICA: Fragmentación por tamaño de caracteres y coherencia de frases
-        fragments = self._chunk_text(text_limpio, max_chars=800)
-        all_results = []
-
-        for f in fragments:
-            triples = self.__extract_triples__(f, term)
-            all_results.extend(triples)
-
-        return all_results
-
-    def reverse_transform(self, data, term):
+    def reverse_transform(self, data, term, text = ""):
+        """
+        La Boca de Mimir. Redacta el texto final basado en los datos.
+        """
         contexto_datos = ""
-        for info in data.values():
-            for tuple in info:
+        for id in data:
+            contexto_datos += f"\nEntity: {id}"
+            for tuple in data[id]:
                 contexto_datos += f"{tuple['pt']['value']} - {tuple['o']['value']}\n"
-        user_prompt = f"Write a text of {term}.\nUsing only the following data:\n{contexto_datos}"
 
-        messages = [{"role": "system", "content": self.system_prompt_2},
-                   {"role": "user", "content": user_prompt}]
+        user_prompt = f"{text}.\nUse ONLY this data:\n{contexto_datos}"
+
+        messages = [
+            self.system_prompt_mimir,  # Asegúrate de tener este prompt del código anterior
+            {"role": "user", "content": user_prompt}
+        ]
 
         try:
             response = ollama.chat(
@@ -133,4 +92,4 @@ class Ollama_Transformer(Transformer):
             )
             return response['message']['content'].strip()
         except Exception as e:
-            return f"Error {e}"
+            return f"El pozo del conocimiento falla... Error: {e}"

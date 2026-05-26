@@ -21,7 +21,7 @@ class Deducer():
 
     def deduce_object(self, term):
         print("Deduction Finished")
-        self.searcher.search_by_category(term)
+        #self.searcher.search_by_category(term)
 
     def check_term(self, term):
         return self.db.term_exists(term.term)

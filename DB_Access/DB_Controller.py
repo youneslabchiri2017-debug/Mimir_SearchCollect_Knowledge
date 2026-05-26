@@ -144,7 +144,7 @@ SELECT ?pt ?o WHERE {{
                     f.write(data_turtle)
                 print(f"Archivo guardado localmente en: {file_path}")
                 # ----------------------------------
-
+                ontologys[id].saved_in_db = True
             except Exception as e:
                 print(f"Error procesando ontología {id}: {e}")
 
