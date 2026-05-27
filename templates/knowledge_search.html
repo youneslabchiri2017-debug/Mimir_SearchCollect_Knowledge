@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador Semántico Avanzado</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/search_term.css') }}">
+</head>
+<body>
+
+    <div class="container" id="main-container">
+        <div class="header">
+            <h1>Graph<span>Search</span></h1>
+            <p>Explora el conocimiento de la Base de Datos Semántica mediante IA</p>
+        </div>
+
+        <div class="search-box">
+            <input type="text" id="search-input" placeholder="¿Qué deseas buscar hoy? (ej: España, Oscar...)" onkeydown="handleKeyPress(event)">
+            <button id="search-btn" onclick="executeSearch()">Buscar</button>
+        </div>
+
+        <div class="skeleton" id="skeleton-loader">
+            <div class="skeleton-line title"></div>
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line w80"></div>
+            <div class="skeleton-line w70"></div>
+        </div>
+
+        <div class="result-card" id="result-card">
+            <h2 id="result-title">Término</h2>
+            <p id="result-text">Aquí aparecerá la respuesta de Ollama...</p>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/search_term.js') }}"></script>
+</body>
+</html>

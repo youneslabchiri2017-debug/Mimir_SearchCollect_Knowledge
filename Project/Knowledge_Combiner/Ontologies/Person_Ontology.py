@@ -6,11 +6,14 @@ class Person_Ontology(Ontology):
         self.required_properties = ['name']
         self.rdf_type = "schema:Person"
         self.property_map = {
-            "name": "schema:name",
-            "birthDate": "schema:birthDate",
+            "given_name": "schema:name",
+            "date_of_birth": "schema:birthDate",
+            "place_of_birth": "schema:placeOfBirth",
+            "educated_at": "schema:educatedAt",
+            "position_held": "schema:positionHeld",
             "occupation": "schema:occupation",
-            "nationality": "schema:nationality",
-            "sex": "schema:nationality"
+            "country_of_citizenship": "schema:nationality",
+            "sex_or_gender": "schema:sex"
         }
         if nx:
             super().__init__(terms, key_id, db, nx)

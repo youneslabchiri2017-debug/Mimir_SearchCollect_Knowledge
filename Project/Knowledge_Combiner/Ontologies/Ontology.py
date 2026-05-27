@@ -21,6 +21,8 @@ class Ontology:
         self.SCHEMA = Namespace("http://schema.org/rdf/")
         self.LOCAL = Namespace("http://tu_proyecto.org/resource/")
         self.EXTRA = Namespace("http://tu_proyecto.org/rdf-schema/")
+        self.PREMIUM = Namespace("http://tu_proyecto.org/rdf-premium/")
+        self.PREMIUM_S = Namespace("http://tu_proyecto.org/rdfs-premium/")
         self.url = "http://localhost:7200/repositories/KnowledgeDB"
         self.WikiData = Namespace("https://www.wikidata.org/wiki/")
         self.graph = self.build_graph(terms.filtered_data[key_cat], key_cat.split("-")[1])
@@ -57,14 +59,20 @@ class Ontology:
             for u, attr, v, is_literal, qid in data[2]:
                 try:
                     clean_attr = self.clean_property_name(attr)
-                    pred_uri = self.SCHEMA[clean_attr]
-                    pred_uri_rdfs = self.EXTRA[clean_attr]
+                    is_premium = clean_attr in self.property_map
+                    if is_premium:
+                        pred_uri = self.PREMIUM[clean_attr]
+                        pred_uri_rdfs = self.PREMIUM_S[clean_attr]
+                    else:
+                        pred_uri = self.SCHEMA[clean_attr]
+                        pred_uri_rdfs = self.EXTRA[clean_attr]
                     rdf_g.add((main_subject, pred_uri_rdfs, Literal(v)))
                     if is_literal == 'entity':
                         # Si es una entidad y tenemos su QID, lo ideal es usar el QID como URI local
                         rdf_g.add((main_subject, pred_uri, self.LOCAL[qid]))
                         rdf_g.add((self.LOCAL[qid], OWL.sameAs, URIRef(f"https://www.wikidata.org/wiki/{qid}")))
                         rdf_g.add((self.LOCAL[qid], self.EXTRA["Label"], Literal(v)))
+                        rdf_g.add((self.LOCAL[qid], self.PREMIUM_S["Label"], Literal(v)))
                 except:
                     print("Something went wrong")
             names = list(filter(lambda x: x[1] in {"short name", "taxon name", "given name"}, data[2]))

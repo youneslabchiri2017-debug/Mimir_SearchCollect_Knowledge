@@ -69,8 +69,8 @@ class DB_Controller():
         query = f"""
                     PREFIX res: <http://tu_proyecto.org/resource/>
 
-SELECT ?pt ?o WHERE {{
-  # 1. Buscamos las tripletas del recurso
+                SELECT ?pt ?o WHERE {{
+                  # 1. Buscamos las tripletas del recurso
               res:{qid} ?p ?o .
               FILTER(isLiteral(?o))
               
@@ -147,6 +147,67 @@ SELECT ?pt ?o WHERE {{
                 ontologys[id].saved_in_db = True
             except Exception as e:
                 print(f"Error procesando ontología {id}: {e}")
+
+    def get_general_info(self, qid):
+        query = f"""
+                PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+                PREFIX ns1: <http://tu_proyecto.org/rdf-schema/>
+                PREFIX res: <http://tu_proyecto.org/resource/>
+                
+                SELECT * WHERE {{
+                    res:{qid} a ?o .
+                    res:{qid}	ns1:Label ?l
+                }}
+                        """
+        endpoint = self.url.replace("/statements", "")
+        headers = {'Accept': 'application/sparql-results+json', }
+        params = {'query': query}
+        try:
+            response = requests.get(endpoint, params=params, headers=headers)
+
+            if response.status_code == 200:
+                data = response.json()
+                bindings = data.get("results", {}).get("bindings", [])
+                if bindings:
+                    return bindings
+                return []  # Retorna lista vacía si no hay resultados
+            else:
+                print(f"Error al consultar: {response.status_code} - {response.text}")
+                return None
+        except Exception as e:
+            print(f"Error en la conexión SPARQL: {e}")
+            return None
+
+    def get_premium_data(self, qid):
+        query = f"""
+                    PREFIX ns1: <http://tu_proyecto.org/rdf-schema/>
+                    PREFIX res: <http://tu_proyecto.org/resource/>
+                                        
+                    SELECT ?attr_name ?obj ?label WHERE {{
+                        res:{qid} ?attr ?obj .
+                        FILTER(strstarts(str(?attr), 'http://tu_proyecto.org/rdf-premium/'))
+                            BIND(REPLACE(STR(?attr), "http://tu_proyecto.org/rdf-premium/", "") AS ?attr_name)
+                        ?obj ns1:Label ?label
+                    }}
+                """
+        endpoint = self.url.replace("/statements", "")
+        headers = {'Accept': 'application/sparql-results+json', }
+        params = {'query': query}
+        try:
+            response = requests.get(endpoint, params=params, headers=headers)
+
+            if response.status_code == 200:
+                data = response.json()
+                bindings = data.get("results", {}).get("bindings", [])
+                if bindings:
+                    return bindings
+                return []  # Retorna lista vacía si no hay resultados
+            else:
+                print(f"Error al consultar: {response.status_code} - {response.text}")
+                return None
+        except Exception as e:
+            print(f"Error en la conexión SPARQL: {e}")
+            return None
 
 
     def load_knowledge(self, term_name):

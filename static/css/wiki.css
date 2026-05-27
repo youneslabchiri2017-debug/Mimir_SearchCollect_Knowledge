@@ -1,0 +1,252 @@
+:root {
+            --bg-main: #0f172a;       /* Fondo oscuro profundo (Slate 900) */
+            --bg-card: #1e293b;       /* Fondo de tarjetas (Slate 800) */
+            --bg-input: #334155;      /* Fondo de inputs (Slate 700) */
+            --primary-color: #38bdf8; /* Azul cyan eléctrico para enlaces/títulos */
+            --accent-color: #10a37f;  /* El verde rúnico de Mimir */
+            --text-main: #f8fafc;     /* Texto principal casi blanco */
+            --text-muted: #94a3b8;    /* Texto secundario grisáceo */
+            --border-color: #334155;  /* Bordes sutiles */
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+
+        /* BARRA SUPERIOR CON BUSCADOR */
+        .wiki-header {
+            background-color: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .wiki-logo {
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: var(--text-main);
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .wiki-logo span {
+            color: var(--accent-color);
+        }
+
+        /* Buscador integrado */
+        .search-form {
+            display: flex;
+            max-width: 500px;
+            width: 100%;
+            margin: 0 20px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 8px 16px;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 6px 0 0 6px;
+            color: var(--text-main);
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary-color);
+        }
+
+        .search-btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 0 16px;
+            border-radius: 0 6px 6px 0;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .search-btn:hover {
+            background-color: #0d8a6b;
+        }
+
+        /* LAYOUT PRINCIPAL */
+        .wiki-container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 30px;
+        }
+
+        @media (max-width: 900px) {
+            .wiki-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* COLUMNA IZQUIERDA: NARRATIVA */
+        .wiki-content {
+            background-color: var(--bg-card);
+            padding: 40px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .term-title {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+
+        .term-category {
+            font-size: 0.9rem;
+            color: var(--accent-color);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin-bottom: 25px;
+        }
+
+        .mimir-story {
+            font-size: 1.1rem;
+            text-align: justify;
+            margin-bottom: 40px;
+            color: #e2e8f0;
+            white-space: pre-line;
+        }
+
+        /* Tablas de datos */
+        .additional-data-section {
+            border-top: 2px solid var(--border-color);
+            padding-top: 30px;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        .dynamic-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        .dynamic-table th {
+            background-color: var(--bg-input);
+            color: var(--primary-color);
+            text-align: left;
+            padding: 12px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .dynamic-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .dynamic-table tr:nth-child(even) {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .prop-name {
+            font-weight: 600;
+            color: var(--text-muted);
+            width: 35%;
+        }
+
+        /* COLUMNA DERECHA: SIDEBAR (Infobox + Desambiguación) */
+        .wiki-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* 1. Panel de Múltiples Entidades (Desambiguación) */
+        .sidebar-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            background-color: var(--bg-input);
+            padding: 12px 15px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--primary-color);
+        }
+
+        .entity-list {
+            list-style: none;
+        }
+
+        .entity-item a {
+            display: block;
+            padding: 10px 15px;
+            color: var(--text-main);
+            text-decoration: none;
+            font-size: 0.9rem;
+            border-bottom: 1px solid var(--border-color);
+            transition: background 0.2s;
+        }
+
+        .entity-item:last-child a {
+            border-bottom: none;
+        }
+
+        .entity-item a:hover {
+            background-color: var(--bg-input);
+            color: var(--primary-color);
+        }
+
+        .entity-meta {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* 2. El Infobox Tradicional */
+        .infobox-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .infobox-table tr {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .infobox-label {
+            padding: 10px 15px;
+            font-weight: 600;
+            color: var(--text-muted);
+            background-color: rgba(0,0,0,0.1);
+            width: 40%;
+        }
+
+        .infobox-value {
+            padding: 10px 15px;
+        }

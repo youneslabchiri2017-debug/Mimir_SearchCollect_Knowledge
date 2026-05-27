@@ -27,6 +27,11 @@ def get_term_data(term):
 import json
 from flask import Response, abort
 
+@routes_api.route('/terms/search_qid', methods=['GET'])
+def get_qid_term():
+    term = flask.request.args.get('term', '').strip()
+    qids = db.get_id_of_term(term)
+    return flask.jsonify(qids)
 
 @routes_api.route('/ask_mimir/<text>', methods=['GET'])
 def ask_mimir(text):

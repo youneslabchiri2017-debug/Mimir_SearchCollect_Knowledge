@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ termino }} - Mimir Wiki</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/wiki.css') }}">
+</head>
+<body>
+
+    <nav class="wiki-header">
+        <a href="/" class="wiki-logo">🧠 Mimir<span>Wiki</span></a>
+        
+        <div class="search-container">
+            <form class="search-form" action="/search_router" method="GET" autocomplete="off">
+                <input type="text" id="search-input" name="q" class="search-input" placeholder="Pregúntale algo a Mimir..." required>
+                <button type="submit" class="search-btn">🔍</button>
+            </form>
+            <div id="search-dropdown" class="search-dropdown"></div>
+        </div>
+        
+        <div style="font-size: 0.85rem; color: var(--text-muted);" class="header-hidden-mobile">Knowledge Graph v2.0</div>
+    </nav>
+
+    <main class="wiki-container">
+        
+        <article class="wiki-content">
+            <h1 class="term-title">{{ termino }}</h1>
+            <div class="term-category">{{ categoria }}</div>
+            
+            <section class="mimir-story">
+                {{ relato_mimir }}
+            </section>
+
+            <section class="additional-data-section">
+                <h2 class="section-title">📊 Datos Adicionales</h2>
+                <table class="dynamic-table">
+                    <thead>
+                        <tr>
+                            <th>Propiedad</th>
+                            <th>Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for propiedad, valor in datos_extra.items() %}
+                        <tr>
+                            <td class="prop-name">{{ propiedad }}</td>
+                            <td>{{ valor }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="2" style="color: var(--text-muted); font-style: italic; text-align: center;">No hay propiedades adicionales registradas.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+        </article>
+
+        <aside class="wiki-sidebar">
+            
+            {% if otras_entidades %}
+            <div class="sidebar-card">
+                <div class="card-header">🔍 Coincidencias encontradas</div>
+                <ul class="entity-list">
+                    {% for entidad in otras_entidades %}
+                    <li class="entity-item">
+                        <a href="/wiki/{{ entidad.qid }}">
+                            🎯 {{ entidad.label }}
+                            <span class="entity-meta">Tipo: {{ entidad.type }}</span>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <div class="sidebar-card">
+                <div class="card-header">ℹ️ Ficha Técnica</div>
+                <table class="infobox-table">
+                    <tbody>
+                        {% for propiedad, valor in datos_premium.items() %}
+                        <tr>
+                            <td class="infobox-label">{{ propiedad }}</td>
+                            <td class="infobox-value">{{ valor }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="2" style="padding: 15px; text-align: center; color: var(--text-muted);">Sin datos estructurados.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <a href="/mimir_oracles">
+                <div class="sidebar-card" >
+                    <div class="card-header">ℹ️ Ask Mimir?</div>
+                    <table class="infobox-table">
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </a>
+            
+        </aside>
+        </aside>
+
+        
+
+    </main>
+
+    <script src="{{ url_for('static', filename='js/wiki.js') }}"></script>
+</body>
+</html>

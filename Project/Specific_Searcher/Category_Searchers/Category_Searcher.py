@@ -31,23 +31,23 @@ class Category_Searcher():
                 term.data[key]['wikidata'] = self.wiki_searcher.search(term.term, qid)
             except Exception as e:
                 print(e)
-            '''
-            try:
-                term.data[key]['dbpedia'] = self.dbpedia_searcher.search(term.term, qid)
-            except Exception as e:
-                print(e)
-            try:
-                term.data[key]['wikipedia'] = self.wikipedia_searcher.search(term.term, qid)
-            except Exception as e:
-                print(e)
-            try:
-                term.data[key]['special'] = self.special_search(term)
-            except Exception as e:
-                print(e)
-            try:
-                term.data[key]['web_search'] = self.general_web_searcher.search(term.term)
-            except Exception as e:
-                print(e)
-            '''
+            if term.deep_search:
+                try:
+                    term.data[key]['dbpedia'] = self.dbpedia_searcher.search(term.term, qid)
+                except Exception as e:
+                    print(e)
+                try:
+                    term.data[key]['wikipedia'] = self.wikipedia_searcher.search(term.term, qid)
+                except Exception as e:
+                    print(e)
+                try:
+                    term.data[key]['special'] = self.special_search(term)
+                except Exception as e:
+                    print(e)
+                try:
+                    term.data[key]['web_search'] = self.general_web_searcher.search(term.term)
+                except Exception as e:
+                    print(e)
+
 
 
