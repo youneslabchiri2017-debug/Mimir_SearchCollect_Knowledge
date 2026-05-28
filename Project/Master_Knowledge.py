@@ -13,9 +13,9 @@ class Master_Knowledge():
         self.k_combiner = Ontology_Master()
         self.filter = Knowledge_Filter()
 
-    def seatch_new_knowledge(self, term):
+    def seatch_new_knowledge(self, term, deep_s = False):
         try:
-            new_term = Term(term)
+            new_term = Term(term, deep_s)
             self.deducer.deduce_object(new_term)
             self.search.search_by_category(new_term)
             self.filter.filter(new_term)

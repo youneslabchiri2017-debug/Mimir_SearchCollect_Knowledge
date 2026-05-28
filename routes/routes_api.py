@@ -2,6 +2,7 @@ import flask, json
 from DB_Access.DB_Controller import DB_Controller
 from Project.Master_Knowledge import Master_Knowledge
 from Web_Searcher.Transformers.Ollama_Transformer import Ollama_Transformer
+from routes.routes import knowledge_search
 
 db = DB_Controller()
 master = Master_Knowledge()
@@ -94,6 +95,26 @@ def ask_mimir(text):
     # Retornamos el generador con el mimetype correcto para streaming continuo
     return Response(generate(), mimetype='text/event-stream')
 
+@routes_api.route('/terms/', methods=['POST'])
+def post_term():
+    query = flask.request.form.get('q', '').strip()
+    deep_s = 'true' == flask.request.form.get('deep', 'false').strip().lower()
+
+    if not query or query == '':
+        return abort(400, "Bad Request")
+    try:
+        knowledge = master.seatch_new_knowledge(query, deep_s)
+        if knowledge and knowledge.ontologyes:
+            db.save_knowledge(knowledge.ontologyes)
+            qids = db.get_id_of_term(query)
+            if qids and len(qids) > 0:
+                return {"term_id": qids[0]}
+            else:
+                return abort(404, "Not Found")
+        else:
+            return abort(400, "Bad Request")
+    except Exception as e:
+        return abort(400, str(e))
 
 @routes_api.route('/terms/<name_term>', methods=['POST'])
 def get_new_term(name_term):
