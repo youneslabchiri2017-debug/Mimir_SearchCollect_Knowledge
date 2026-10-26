@@ -60,7 +60,8 @@ def mimir_wiki(qid):
                                      relato_mimir=relato_mimir,
                                      datos_premium=datos_premium,  # Ahora es un {}
                                      datos_extra=datos_extra,      # Ahora es un {}
-                                     otras_entidades=otras_entidades_list
+                                     otras_entidades=otras_entidades_list,
+                                     qid=qid
                                      )
 
     except Exception as e:

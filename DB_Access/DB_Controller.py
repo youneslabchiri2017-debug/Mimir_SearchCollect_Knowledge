@@ -8,8 +8,8 @@ class DB_Controller():
 
     def __init__(self):
         self.SCHEMA = Namespace("http://schema.org/")
-        self.LOCAL = Namespace("http://tu_proyecto.org/resource/")
-        self.EXTRA = Namespace("http://tu_proyecto.org/properties/extra/")
+        self.LOCAL = Namespace("http://mimir.org/resource/")
+        self.EXTRA = Namespace("http://mimir.org/properties/extra/")
         self.url = "http://localhost:7200/repositories/KnowledgeDB"
 
     def get_id_of_term(self, term):
@@ -20,7 +20,7 @@ class DB_Controller():
         # Usamos tu prefijo ns1 que es el que contiene "Label" en mayúscula,
         # o cámbialo a rdfs:label (en minúscula) si usas el estándar.
         query = f"""
-            PREFIX ns1: <http://tu_proyecto.org/rdf-schema/>
+            PREFIX ns1: <http://mimir.org/rdf-schema/>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
             SELECT ?s WHERE {{
@@ -50,7 +50,6 @@ class DB_Controller():
                 # Opcional: En lugar de devolver todo el JSON crudo,
                 # podemos extraer directamente el ID o URI limpia para facilitarte la vida
                 if bindings:
-                    # Devuelve una lista con las URIs encontradas (ej: ['http://tu_proyecto.org/resource/Q1951683'])
                     data = [row["s"]["value"] for row in bindings]
                     return list(map(lambda x: x.split('/')[-1], data))
 
@@ -67,7 +66,7 @@ class DB_Controller():
         # Usamos tu prefijo ns1 que es el que contiene "Label" en mayúscula,
         # o cámbialo a rdfs:label (en minúscula) si usas el estándar.
         query = f"""
-                    PREFIX res: <http://tu_proyecto.org/resource/>
+                    PREFIX res: <http://mimir.org/resource/>
 
                 SELECT ?pt ?o WHERE {{
                   # 1. Buscamos las tripletas del recurso
@@ -96,7 +95,6 @@ class DB_Controller():
                 # Opcional: En lugar de devolver todo el JSON crudo,
                 # podemos extraer directamente el ID o URI limpia para facilitarte la vida
                 if bindings:
-                    # Devuelve una lista con las URIs encontradas (ej: ['http://tu_proyecto.org/resource/Q1951683'])
                     return bindings
 
                 return []  # Retorna lista vacía si no hay resultados
@@ -151,8 +149,8 @@ class DB_Controller():
     def get_general_info(self, qid):
         query = f"""
                 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-                PREFIX ns1: <http://tu_proyecto.org/rdf-schema/>
-                PREFIX res: <http://tu_proyecto.org/resource/>
+                PREFIX ns1: <http://mimir.org/rdf-schema/>
+                PREFIX res: <http://mimir.org/resource/>
                 
                 SELECT * WHERE {{
                     res:{qid} a ?o .
@@ -180,13 +178,13 @@ class DB_Controller():
 
     def get_premium_data(self, qid):
         query = f"""
-                    PREFIX ns1: <http://tu_proyecto.org/rdf-schema/>
-                    PREFIX res: <http://tu_proyecto.org/resource/>
+                    PREFIX ns1: <http://mimir.org/rdf-schema/>
+                    PREFIX res: <http://mimir.org/resource/>
                                         
                     SELECT ?attr_name ?obj ?label WHERE {{
                         res:{qid} ?attr ?obj .
-                        FILTER(strstarts(str(?attr), 'http://tu_proyecto.org/rdf-premium/'))
-                            BIND(REPLACE(STR(?attr), "http://tu_proyecto.org/rdf-premium/", "") AS ?attr_name)
+                        FILTER(strstarts(str(?attr), 'http://mimir.org/rdf-premium/'))
+                            BIND(REPLACE(STR(?attr), "http://mimir.org/rdf-premium/", "") AS ?attr_name)
                         ?obj ns1:Label ?label
                     }}
                 """
@@ -214,7 +212,7 @@ class DB_Controller():
         # 1. Preparar la URI y la consulta
         clean_term = term_name.replace(" ", "_")
         # Asegúrate de que coincida con la URI que usaste para guardar
-        uri_full = f"http://tu_proyecto.org/resource/{clean_term}"
+        uri_full = f"http://mimir.org/resource/{clean_term}"
 
         query = f"DESCRIBE <{uri_full}>"
 
@@ -256,7 +254,7 @@ class DB_Controller():
     def delete_knowledge(self, term_name):
         # 1. Preparar la URI del sujeto
         clean_term = term_name.replace(" ", "_")
-        uri_full = f"http://tu_proyecto.org/resource/{clean_term}"
+        uri_full = f"http://mimir.org/resource/{clean_term}"
 
         # 2. Definir la consulta SPARQL Update
         # Borra todos los triples donde Oscar Corcho sea el SUJETO
@@ -307,7 +305,7 @@ class DB_Controller():
 
     def term_exists(self, term_name):
         clean_term = term_name.replace(" ", "_")
-        uri_full = f"http://tu_proyecto.org/resource/{clean_term}"
+        uri_full = f"http://mimir.org/resource/{clean_term}"
 
         query = f"ASK {{ <{uri_full}> ?p ?o . }}"
 
@@ -366,3 +364,55 @@ class DB_Controller():
         plt.title(f"Visualización de conocimiento recuperado: {center_node_name}")
         plt.axis('off')
         plt.show()
+
+    def get_rdf(self, qid):
+        query = f"""
+            PREFIX res:  <http://mimir.org/resource/>
+            PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            PREFIX prov: <http://www.w3.org/ns/prov#>
+
+            CONSTRUCT {{
+                ?s ?p ?o .
+                ?claim ?claim_p ?claim_o .
+            }}
+            WHERE {{
+                BIND(res:{quote(qid, safe="_-")} AS ?s)
+                ?s ?p ?o .
+
+                OPTIONAL {{
+                    ?claim rdf:subject ?s ;
+                           rdf:predicate ?p ;
+                           rdf:object ?o ;
+                           ?claim_p ?claim_o .
+                }}
+            }}
+        """
+
+        endpoint = self.url.replace("/statements", "")
+
+        try:
+            response = requests.get(
+                endpoint,
+                params={"query": query},
+                headers={"Accept": "text/turtle"},
+                timeout=30
+            )
+
+            if response.status_code != 200:
+                print(f"Error SPARQL ({response.status_code}):\n{response.text}")
+                return None
+
+            graph = Graph()
+            graph.parse(data=response.text, format="turtle")
+
+            if len(graph) == 0:
+                return None
+
+            return graph.serialize(format="turtle")
+
+        except requests.RequestException as e:
+            print(f"Error en la conexión SPARQL: {e}")
+            return None
+        except Exception as e:
+            print(f"Error al procesar el RDF: {e}")
+            return None

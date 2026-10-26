@@ -1,5 +1,5 @@
 import spacy, re, torch
-from Web_Searcher.Transformers.Transformer import Transformer
+from Web_Searcher.Text_Transformers.Transformer import Transformer
 from transformers import pipeline
 
 class Text_Transformer(Transformer):

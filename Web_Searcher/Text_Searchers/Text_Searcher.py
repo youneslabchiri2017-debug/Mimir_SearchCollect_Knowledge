@@ -1,5 +1,5 @@
-from Web_Searcher.Transformers.Text_Transformer import Text_Transformer
-from Web_Searcher.Transformers.Ollama_Transformer import Ollama_Transformer
+from Web_Searcher.Text_Transformers.Text_Transformer import Text_Transformer
+from Web_Searcher.Text_Transformers.IA_Agent import Ollama_Transformer
 
 class TextSearcher():
 

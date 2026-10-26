@@ -50,3 +50,13 @@ document.addEventListener('click', (e) => {
         dropdown.style.display = 'none';
     }
 });
+
+async function download_rdf(uri, name){
+    let link = document.createElement("a")
+    link.download = name
+    link.href = uri
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    delete link
+}

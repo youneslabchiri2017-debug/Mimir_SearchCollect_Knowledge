@@ -1,7 +1,7 @@
 import flask, json
 from DB_Access.DB_Controller import DB_Controller
 from Project.Master_Knowledge import Master_Knowledge
-from Web_Searcher.Transformers.Ollama_Transformer import Ollama_Transformer
+from Web_Searcher.Text_Transformers.IA_Agent import Ollama_Transformer
 from routes.routes import knowledge_search
 
 db = DB_Controller()
@@ -10,6 +10,19 @@ transformer = Ollama_Transformer()
 
 routes_api = flask.Blueprint('routes_api', __name__, url_prefix='/api')
 
+@routes_api.route('/terms/RDF/<qid>', methods=['GET'])
+def get_RDF(qid):
+    try:
+        rdf_data = db.get_rdf(qid)
+        if rdf_data:
+            return rdf_data
+        else:
+            abort(404)
+    except:
+        abort(404)
+
+
+#Get qid's of terms
 @routes_api.route('/terms/<term>', methods=['GET'])
 def get_term_data(term):
     qids = db.get_id_of_term(term)
