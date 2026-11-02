@@ -34,7 +34,7 @@ class General_Web_Searcher(TextSearcher):
                     if txt:
                         texts.append(txt)
                 except TimeoutError:
-                    # Si la web no responde en 5s, saltamos aquí y la ignoramos
+                     # Si la web no responde en 5s, saltamos aquí y la ignoramos
                     print(f"⏳ [Timeout] La página tardó más de 5s y fue omitida: {url}")
                     continue
                 except Exception as e:

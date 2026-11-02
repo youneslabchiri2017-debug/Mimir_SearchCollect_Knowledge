@@ -125,10 +125,10 @@ class DB_Controller():
         for id in ontologys:
             try:
                 # Usamos UTF-8 para evitar errores con tildes o caracteres especiales
-                data_turtle = ontologys[id].graph.serialize(format='turtle')
+                data_turtle = ontologys[id].graph.serialize(format="trig")
 
                 # 5. Envío a GraphDB
-                headers = {'Content-Type': 'text/turtle'}
+                headers = {'Content-Type': 'application/x-trig'}
                 response = requests.post(f"{self.url}/statements", data=data_turtle, headers=headers)
 
                 print(f"Ontología {id} ({ontologys[id].term}) enviada. Status: {response.status_code}")
@@ -365,54 +365,94 @@ class DB_Controller():
         plt.axis('off')
         plt.show()
 
-    def get_rdf(self, qid):
-        query = f"""
-            PREFIX res:  <http://mimir.org/resource/>
-            PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-            PREFIX prov: <http://www.w3.org/ns/prov#>
-
-            CONSTRUCT {{
-                ?s ?p ?o .
-                ?claim ?claim_p ?claim_o .
-            }}
-            WHERE {{
-                BIND(res:{quote(qid, safe="_-")} AS ?s)
-                ?s ?p ?o .
-
-                OPTIONAL {{
-                    ?claim rdf:subject ?s ;
-                           rdf:predicate ?p ;
-                           rdf:object ?o ;
-                           ?claim_p ?claim_o .
+    def get_rdf(self, qid, mode = 0):
+        if mode == 0:
+            query = f"""
+                PREFIX res:  <http://mimir.org/resource/>
+                PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+                PREFIX prov: <http://www.w3.org/ns/prov#>
+    
+                CONSTRUCT {{
+                    ?s ?p ?o .
+                    ?claim ?claim_p ?claim_o .
                 }}
-            }}
-        """
+                WHERE {{ 
+                    BIND(res:{quote(qid, safe="_-")} AS ?s)
+                    ?s ?p ?o .
+    
+                    OPTIONAL {{
+                        ?claim rdf:subject ?s ;
+                               rdf:predicate ?p ;
+                               rdf:object ?o .
+                        ?claim ?claim_p ?claim_o .
+                    }}
+                }}
+            """
 
-        endpoint = self.url.replace("/statements", "")
+            endpoint = self.url.replace("/statements", "")
 
-        try:
-            response = requests.get(
-                endpoint,
-                params={"query": query},
-                headers={"Accept": "text/turtle"},
-                timeout=30
-            )
+            try:
+                response = requests.get(
+                    endpoint,
+                    params={"query": query},
+                    headers={"Accept": "text/turtle"},
+                    timeout=30
+                )
 
-            if response.status_code != 200:
-                print(f"Error SPARQL ({response.status_code}):\n{response.text}")
+                if response.status_code != 200:
+                    print(f"Error SPARQL ({response.status_code}):\n{response.text}")
+                    return None
+
+                graph = Graph()
+                graph.parse(data=response.text, format="turtle")
+
+                if len(graph) == 0:
+                    return None
+
+                return graph.serialize(format="turtle")
+
+            except requests.RequestException as e:
+                print(f"Error en la conexión SPARQL: {e}")
                 return None
-
-            graph = Graph()
-            graph.parse(data=response.text, format="turtle")
-
-            if len(graph) == 0:
+            except Exception as e:
+                print(f"Error al procesar el RDF: {e}")
                 return None
+        else:
+            query = f"""
+                                PREFIX res:  <http://mimir.org/resource/>
+                PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+                PREFIX prov: <http://www.w3.org/ns/prov#>
 
-            return graph.serialize(format="turtle")
+                            SELECT DISTINCT ?s ?p ?o ?claim ?source WHERE {{
+                      
+                    VALUES ?s {{ res:{quote(qid, safe="_-")} }}
+                    ?s ?p ?o .
+                        ?claim rdf:subject ?s ;
+                               rdf:predicate ?p ;
+                               rdf:object ?o ;
+                            prov:wasDerivedFrom ?source.
+                            }}
+                                """
 
-        except requests.RequestException as e:
-            print(f"Error en la conexión SPARQL: {e}")
-            return None
-        except Exception as e:
-            print(f"Error al procesar el RDF: {e}")
-            return None
+            endpoint = self.url.replace("/statements", "")
+            headers = {'Accept': 'application/sparql-results+json', }
+            params = {'query': query}
+
+            try:
+                response = requests.get(endpoint, params=params, headers=headers)
+
+                if response.status_code == 200:
+                    data = response.json()
+                    bindings = data.get("results", {}).get("bindings", [])
+
+                    if bindings:
+                        return bindings
+
+                    return []  # Retorna lista vacía si no hay resultados
+                else:
+                    print(f"Error al consultar: {response.status_code} - {response.text}")
+                    return None
+
+            except Exception as e:
+                print(f"Error en la conexión SPARQL: {e}")
+                return None
