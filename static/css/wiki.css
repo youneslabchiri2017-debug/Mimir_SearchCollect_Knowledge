@@ -250,3 +250,40 @@
         .infobox-value {
             padding: 10px 15px;
         }
+
+        /* EXTENSIÓN DE ESTILOS PARA ANALÍTICA Y BUSCADOR COMPLETO */
+
+    .search-container {
+        position: relative;
+        max-width: 500px;
+        width: 100%;
+    }
+
+    .search-dropdown {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 20px;
+        right: 20px;
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 0 0 6px 6px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        max-height: 250px;
+        overflow-y: auto;
+        z-index: 101;
+    }
+
+    .dropdown-item:hover {
+        background-color: var(--bg-input);
+    }
+
+    .header-hidden-mobile {
+        display: block;
+    }
+
+    @media (max-width: 600px) {
+        .header-hidden-mobile {
+            display: none;
+        }
+    }

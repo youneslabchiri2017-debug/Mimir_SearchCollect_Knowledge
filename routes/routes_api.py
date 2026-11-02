@@ -12,8 +12,12 @@ routes_api = flask.Blueprint('routes_api', __name__, url_prefix='/api')
 
 @routes_api.route('/terms/RDF/<qid>', methods=['GET'])
 def get_RDF(qid):
+    mode = flask.request.args.get('mode')
     try:
-        rdf_data = db.get_rdf(qid)
+        if mode != None and mode != 0:
+            rdf_data = db.get_rdf(qid, mode)
+        else:
+            rdf_data = db.get_rdf(qid)
         if rdf_data:
             return rdf_data
         else:

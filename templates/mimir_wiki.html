@@ -3,14 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ termino }} - Mimir Wiki</title>
+    <title>{{ termino }} - Mimir Wiki & Graph Analysis</title>
+    <!-- Tu hoja de estilos base -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/wiki.css') }}">
+    <!-- Estilos específicos para la sección de analítica de GraphDB -->
+    <style>
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .metric-card {
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .metric-card .metric-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .metric-card .metric-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 5px;
+            text-transform: uppercase;
+        }
+
+        .charts-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .chart-card h3 {
+            font-size: 1.1rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 260px;
+            width: 100%;
+        }
+
+        .graph-origin-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-family: monospace;
+            background-color: rgba(56, 189, 248, 0.15);
+            color: var(--primary-color);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+    </style>
+    <!-- Chart.js CDN para la renderización de gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
     <nav class="wiki-header">
         <a href="/" class="wiki-logo">🧠 Mimir<span>Wiki</span></a>
-        
+
         <div class="search-container">
             <form class="search-form" action="/search_router" method="GET" autocomplete="off">
                 <input type="text" id="search-input" name="q" class="search-input" placeholder="Pregúntale algo a Mimir..." required>
@@ -18,47 +97,106 @@
             </form>
             <div id="search-dropdown" class="search-dropdown"></div>
         </div>
-        
+
         <div style="font-size: 0.85rem; color: var(--text-muted);" class="header-hidden-mobile">Knowledge Graph v2.0</div>
     </nav>
 
     <main class="wiki-container">
-        
+
         <article class="wiki-content">
             <h1 class="term-title">{{ termino }}</h1>
             <div class="term-category">{{ categoria }}</div>
-            
+
             <section class="mimir-story">
                 {{ relato_mimir }}
             </section>
 
+            <!-- SECCIÓN 1: Métricas de Composición del Grafo -->
             <section class="additional-data-section">
-                <h2 class="section-title">📊 Datos Adicionales</h2>
+                <h2 class="section-title">📊 Métricas del Subgrafo (GraphDB)</h2>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="total-triples">{{ metricas.total_tripletas|default(0) }}</div>
+                        <div class="metric-label">Total Tripletas</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="named-graphs-count">{{ metricas.num_subgrafos|default(0) }}</div>
+                        <div class="metric-label">Fuentes / Named Graphs</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="predicates-count">{{ metricas.num_predicados|default(0) }}</div>
+                        <div class="metric-label">Predicados Únicos</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="graph-density">{{ metricas.densidad|default('0.00') }}</div>
+                        <div class="metric-label">Densidad de Conexión</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECCIÓN 2: Visualizaciones Gráficas -->
+            <section class="additional-data-section">
+                <h2 class="section-title">📈 Análisis de Procedencia e Intersección</h2>
+
+                <div class="charts-container">
+                    <!-- Gráfico 1: Tripletas por Lugar de Origen / Named Graph -->
+                    <div class="chart-card">
+                        <h3>📌 Tripletas por Fuente / Origen</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="barChartOrigins"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Gráfico 2: Composición e Intersección entre Subgrafos -->
+                    <div class="chart-card">
+                        <h3>🧩 Intersección de Subgrafos</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="donutChartIntersection"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECCIÓN 3: Desglose de Tripletas y Datos Adicionales -->
+            <section class="additional-data-section">
+                <h2 class="section-title">🏷️ Procedencia de Tripletas (PROV-O)</h2>
                 <table class="dynamic-table">
                     <thead>
                         <tr>
-                            <th>Propiedad</th>
-                            <th>Valor</th>
+                            <th>Sujeto / Predicado</th>
+                            <th>Objeto / Valor</th>
+                            <th>Origen (Named Graph)</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="triples-table-body">
+                        {% for item in procedencia_tripletas %}
+                        <tr>
+                            <td class="prop-name">{{ item.predicado }}</td>
+                            <td>{{ item.objeto }}</td>
+                            <td><span class="graph-origin-badge">{{ item.origen }}</span></td>
+                        </tr>
+                        {% else %}
                         {% for propiedad, valor in datos_extra.items() %}
                         <tr>
                             <td class="prop-name">{{ propiedad }}</td>
                             <td>{{ valor }}</td>
+                            <td><span class="graph-origin-badge">http://mimir.org/graphs/default</span></td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="2" style="color: var(--text-muted); font-style: italic; text-align: center;">No hay propiedades adicionales registradas.</td>
+                            <td colspan="3" style="color: var(--text-muted); font-style: italic; text-align: center;">No hay tripletas o datos de procedencia registrados.</td>
                         </tr>
+                        {% endfor %}
                         {% endfor %}
                     </tbody>
                 </table>
             </section>
         </article>
 
+        <!-- SIDEBAR -->
         <aside class="wiki-sidebar">
-            
+
             {% if otras_entidades %}
             <div class="sidebar-card">
                 <div class="card-header">🔍 Coincidencias encontradas</div>
@@ -93,33 +231,33 @@
                 </table>
             </div>
 
-            <a href="/mimir_oracles">
-                <div class="sidebar-card" >
-                    <div class="card-header">ℹ️ Ask Mimir?</div>
-                    <table class="infobox-table">
-                        <tbody>
-                        </tbody>
-                    </table>
+            <a href="/mimir_oracles" style="text-decoration: none;">
+                <div class="sidebar-card">
+                    <div class="card-header">🔮 Ask Mimir?</div>
                 </div>
             </a>
 
-            <a onclick="download_rdf('/api/terms/RDF/{{qid}}', '{{termino}}_{{qid}}.ttl')">
-                <div class="sidebar-card" >
-                    <div class="card-header">ℹ️ Download RDF</div>
-                    <table class="infobox-table">
-                        <tbody>
-                        </tbody>
-                    </table>
+            <a onclick="download_rdf('/api/terms/RDF/{{qid}}', '{{termino}}_{{qid}}.ttl')" style="cursor: pointer; text-decoration: none;">
+                <div class="sidebar-card">
+                    <div class="card-header">📥 Download RDF</div>
                 </div>
             </a>
-            
-        </aside>
-        </aside>
 
-        
+        </aside>
 
     </main>
 
+    <!-- Inyección de variables del servidor a Javascript -->
+    <script>
+        window.MIMIR_GRAPH_DATA = {
+            origenes: {{ datos_graficos.origenes | tojson | safe if datos_graficos else '["Wikidata", "DBpedia", "Internal PROV"]' }},
+            cantidades: {{ datos_graficos.cantidades | tojson | safe if datos_graficos else '[45, 28, 18]' }},
+            interseccionLabels: {{ datos_graficos.interseccion_labels | tojson | safe if datos_graficos else '["Exclusivo Wikidata", "Exclusivo DBpedia", "Compartido (Intersección)"]' }},
+            interseccionValores: {{ datos_graficos.interseccion_valores | tojson | safe if datos_graficos else '[35, 20, 36]' }}
+        };
+    </script>
+
+    <!-- Script principal compilado -->
     <script src="{{ url_for('static', filename='js/wiki.js') }}"></script>
 </body>
 </html>

@@ -62,50 +62,6 @@ class DB_Controller():
             print(f"Error en la conexión SPARQL: {e}")
             return None
 
-    def get_tuples_of_term(self, qid):
-        # Usamos tu prefijo ns1 que es el que contiene "Label" en mayúscula,
-        # o cámbialo a rdfs:label (en minúscula) si usas el estándar.
-        query = f"""
-                    PREFIX res: <http://mimir.org/resource/>
-
-                SELECT ?pt ?o WHERE {{
-                  # 1. Buscamos las tripletas del recurso
-              res:{qid} ?p ?o .
-              FILTER(isLiteral(?o))
-              
-              # 2. Limpiamos la URI para quedarnos solo con el nombre del predicado
-              BIND(REPLACE(STR(?p), "^.*[/#]", "") AS ?pt)
-              
-              # 3. Filtros antibasura (opcional, para evitar ruido)
-              FILTER(!REGEX(?pt, "category|wikimedia|wiki|pageid|revision|image", "i"))
-                }}
-                    """
-
-        endpoint = self.url.replace("/statements", "")
-        headers = {'Accept': 'application/sparql-results+json',}
-        params = {'query': query}
-
-        try:
-            response = requests.get(endpoint, params=params, headers=headers)
-
-            if response.status_code == 200:
-                data = response.json()
-                bindings = data.get("results", {}).get("bindings", [])
-
-                # Opcional: En lugar de devolver todo el JSON crudo,
-                # podemos extraer directamente el ID o URI limpia para facilitarte la vida
-                if bindings:
-                    return bindings
-
-                return []  # Retorna lista vacía si no hay resultados
-            else:
-                print(f"Error al consultar: {response.status_code} - {response.text}")
-                return None
-
-        except Exception as e:
-            print(f"Error en la conexión SPARQL: {e}")
-            return None
-
     def clean_for_uri(self, text):
         """
         Convierte cualquier texto en una cadena 100% segura para ser usada como URI.
@@ -207,6 +163,47 @@ class DB_Controller():
             print(f"Error en la conexión SPARQL: {e}")
             return None
 
+    def get_tuples_of_term(self, qid):
+        # Usamos tu prefijo ns1 que es el que contiene "Label" en mayúscula,
+        # o cámbialo a rdfs:label (en minúscula) si usas el estándar.
+        query = f"""
+                    PREFIX res: <http://mimir.org/resource/>
+
+                SELECT ?pt ?o WHERE {{
+                  # 1. Buscamos las tripletas del recurso
+              res:{qid} ?p ?o .
+              FILTER(isLiteral(?o))
+
+              # 2. Limpiamos la URI para quedarnos solo con el nombre del predicado
+              BIND(REPLACE(STR(?p), "^.*[/#]", "") AS ?pt)
+
+              # 3. Filtros antibasura (opcional, para evitar ruido)
+              FILTER(!REGEX(?pt, "category|wikimedia|wiki|pageid|revision|image", "i"))
+                }}
+                    """
+
+        endpoint = self.url.replace("/statements", "")
+        headers = {'Accept': 'application/sparql-results+json', }
+        params = {'query': query}
+
+        try:
+            response = requests.get(endpoint, params=params, headers=headers)
+
+            if response.status_code == 200:
+                data = response.json()
+                bindings = data.get("results", {}).get("bindings", [])
+
+                if bindings:
+                    return bindings
+
+                return []  # Retorna lista vacía si no hay resultados
+            else:
+                print(f"Error al consultar: {response.status_code} - {response.text}")
+                return None
+
+        except Exception as e:
+            print(f"Error en la conexión SPARQL: {e}")
+            return None
 
     def load_knowledge(self, term_name):
         # 1. Preparar la URI y la consulta
@@ -368,91 +365,98 @@ class DB_Controller():
     def get_rdf(self, qid, mode = 0):
         if mode == 0:
             query = f"""
-                PREFIX res:  <http://mimir.org/resource/>
-                PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-                PREFIX prov: <http://www.w3.org/ns/prov#>
-    
-                CONSTRUCT {{
-                    ?s ?p ?o .
-                    ?claim ?claim_p ?claim_o .
-                }}
-                WHERE {{ 
-                    BIND(res:{quote(qid, safe="_-")} AS ?s)
-                    ?s ?p ?o .
-    
-                    OPTIONAL {{
-                        ?claim rdf:subject ?s ;
-                               rdf:predicate ?p ;
-                               rdf:object ?o .
-                        ?claim ?claim_p ?claim_o .
+                    PREFIX res: <http://mimir.org/resource/>
+
+                    CONSTRUCT {{
+                        ?s ?p ?o .
                     }}
-                }}
-            """
+                    WHERE {{
+                        BIND(res:{qid} AS ?s)
+                            ?s ?p ?o .
+                    }}
+                """
 
             endpoint = self.url.replace("/statements", "")
 
+            # Usamos POST en lugar de GET para evitar problemas de codificación en la URL con consultas multilínea
             try:
-                response = requests.get(
+                response = requests.post(
                     endpoint,
-                    params={"query": query},
-                    headers={"Accept": "text/turtle"},
+                    data={"query": query},
+                    headers={
+                        "Accept": "text/turtle",
+                        "Content-Type": "application/x-www-form-urlencoded"
+                    },
                     timeout=30
                 )
 
-                if response.status_code != 200:
-                    print(f"Error SPARQL ({response.status_code}):\n{response.text}")
+                response.raise_for_status()
+
+                print("URL:", response.url)
+                print("Content-Type:", response.headers.get("Content-Type"))
+                print("Respuesta (primeros 1000 caracteres):", response.text[:1000])
+
+                # Verificamos si la respuesta está vacía antes de parsear
+                if not response.text.strip():
+                    print(f"No se encontraron triples para {qid} (respuesta vacía)")
                     return None
 
                 graph = Graph()
-                graph.parse(data=response.text, format="turtle")
+                graph.parse(
+                    data=response.text,  # Es más seguro pasar response.text directamente con el formato turtle
+                    format="turtle"
+                )
 
                 if len(graph) == 0:
+                    print(f"No se encontraron triples para {qid}")
                     return None
 
                 return graph.serialize(format="turtle")
 
             except requests.RequestException as e:
                 print(f"Error en la conexión SPARQL: {e}")
+                if e.response is not None:
+                    print(e.response.text)
                 return None
+
             except Exception as e:
                 print(f"Error al procesar el RDF: {e}")
                 return None
         else:
-            query = f"""
-                                PREFIX res:  <http://mimir.org/resource/>
-                PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-                PREFIX prov: <http://www.w3.org/ns/prov#>
+            pass
 
-                            SELECT DISTINCT ?s ?p ?o ?claim ?source WHERE {{
-                      
-                    VALUES ?s {{ res:{quote(qid, safe="_-")} }}
-                    ?s ?p ?o .
-                        ?claim rdf:subject ?s ;
-                               rdf:predicate ?p ;
-                               rdf:object ?o ;
-                            prov:wasDerivedFrom ?source.
-                            }}
-                                """
+    def get_tuples_with_provenance(self, qid):
+        """
+        Obtiene las tripletas de la entidad y el Named Graph (origen) donde están almacenadas,
+        utilizando la sintaxis de grafos nominados de GraphDB.
+        """
+        query = f"""
+            PREFIX res: <http://mimir.org/resource/>
 
-            endpoint = self.url.replace("/statements", "")
-            headers = {'Accept': 'application/sparql-results+json', }
-            params = {'query': query}
+            SELECT ?g ?p ?pt ?o WHERE {{
+              GRAPH ?g {{
+                  res:{qid} ?p ?o .
+              }}
+              # Limpiamos la URI del predicado
+              BIND(REPLACE(STR(?p), "^.*[/#]", "", "i") AS ?pt)
 
-            try:
-                response = requests.get(endpoint, params=params, headers=headers)
+              # Filtros opcionales para evitar ruido
+              FILTER(!REGEX(?pt, "category|wikimedia|wiki|pageid|revision|image", "i"))
+            }}
+        """
 
-                if response.status_code == 200:
-                    data = response.json()
-                    bindings = data.get("results", {}).get("bindings", [])
+        endpoint = self.url.replace("/statements", "")
+        headers = {'Accept': 'application/sparql-results+json'}
+        params = {'query': query}
 
-                    if bindings:
-                        return bindings
-
-                    return []  # Retorna lista vacía si no hay resultados
-                else:
-                    print(f"Error al consultar: {response.status_code} - {response.text}")
-                    return None
-
-            except Exception as e:
-                print(f"Error en la conexión SPARQL: {e}")
-                return None
+        try:
+            response = requests.get(endpoint, params=params, headers=headers)
+            if response.status_code == 200:
+                bindings = response.json().get("results", {}).get("bindings", [])
+                return bindings if bindings else []
+            else:
+                print(f"Error al consultar procedencia: {response.status_code}")
+                return []
+        except Exception as e:
+            print(f"Error en la conexión SPARQL (provenance): {e}")
+            return []

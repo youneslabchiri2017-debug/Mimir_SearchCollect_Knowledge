@@ -48,6 +48,3 @@ class Category_Searcher():
                     term.data[key]['web_search'] = self.general_web_searcher.search(term.term)
                 except Exception as e:
                     print(e)
-
-
-
