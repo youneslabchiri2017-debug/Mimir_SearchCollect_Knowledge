@@ -148,3 +148,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+async function download_csv(uri, name) {
+    try {
+        let link = document.createElement("a");
+        link.download = name;
+        link.href = uri;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } catch (err) {
+        console.error("Error descargando el archivo CSV de métricas:", err);
+    }
+}

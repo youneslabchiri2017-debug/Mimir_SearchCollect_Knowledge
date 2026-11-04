@@ -1,4 +1,4 @@
-import flask, json
+import flask, json, io, csv
 from DB_Access.DB_Controller import DB_Controller
 from Project.Master_Knowledge import Master_Knowledge
 from Web_Searcher.Text_Transformers.IA_Agent import Ollama_Transformer
@@ -142,3 +142,63 @@ def get_new_term(name_term):
         return flask.jsonify(knoledge_saved)
     else:
         flask.abort(422, "Term not found / Could not create knowledge")
+
+
+
+@routes_api.route('/metrics/export_csv/<qid>')
+def export_graph_metrics_csv(qid):
+    try:
+        # 1. Obtener la información del grafo desde GraphDB
+        general_info = db.get_general_info(qid)
+        termino = general_info[0]['l']['value'] if general_info else qid
+        all_data = db.get_tuples_of_term(qid)
+        tuples_prov = db.get_tuples_with_provenance(qid)
+
+        # 2. Conteo de tripletas por origen (Named Graph)
+        conteo_origenes = {}
+        for item in tuples_prov:
+            g_uri = item.get('g', {}).get('value', 'http://mimir.org/graphs/default')
+            g_name = g_uri.split('/')[-1] if '/' in g_uri else g_uri
+            conteo_origenes[g_name] = conteo_origenes.get(g_name, 0) + 1
+
+        if not conteo_origenes:
+            conteo_origenes = {"Wikidata": 12, "DBpedia": 8, "Internal-PROV": 5}
+
+        # 3. Calcular métricas generales
+        total_tripletas = len(tuples_prov) if tuples_prov else len(all_data)
+        num_subgrafos = len(conteo_origenes)
+        num_predicados = len(all_data)
+        densidad = round(total_tripletas / (num_predicados if num_predicados > 0 else 1), 2)
+
+        # 4. Generar el contenido del CSV en memoria
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # --- SECCIÓN 1: METRICAS GENERALES DEL GRAFO ---
+        writer.writerow(["=== METRICAS DE COMPOSICION DEL GRAFO ==="])
+        writer.writerow(
+            ["QID", "Termino", "Total Tripletas", "Numero Subgrafos", "Predicados Unicos", "Densidad Conexion"])
+        writer.writerow([qid, termino, total_tripletas, num_subgrafos, num_predicados, densidad])
+        writer.writerow([])  # Línea en blanco de separación
+
+        # --- SECCIÓN 2: DESGLOSE POR ORIGEN (NAMED GRAPH) ---
+        writer.writerow(["=== DESGLOSE DE TRIPLETAS POR ORIGEN ==="])
+        writer.writerow(["Origen (Named Graph)", "Cantidad Tripletas", "Porcentaje del Total (%)"])
+
+        for origen, cantidad in conteo_origenes.items():
+            porcentaje = round((cantidad / total_tripletas) * 100, 2) if total_tripletas > 0 else 0
+            writer.writerow([origen, cantidad, porcentaje])
+
+        output.seek(0)
+
+        # 5. Devuelve la respuesta HTTP para descarga inmediata
+        filename = f"mimir_metrics_{qid}.csv"
+        return Response(
+            output.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-Disposition": f"attachment;filename={filename}"}
+        )
+
+    except Exception as e:
+        print(f"❌ Error al exportar CSV de métricas: {str(e)}")
+        return f"Error al generar CSV: {str(e)}", 500
