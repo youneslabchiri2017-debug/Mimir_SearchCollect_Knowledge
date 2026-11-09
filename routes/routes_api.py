@@ -114,24 +114,33 @@ def ask_mimir(text):
 
 @routes_api.route('/terms/', methods=['POST'])
 def post_term():
-    query = flask.request.form.get('q', '').strip()
-    deep_s = 'true' == flask.request.form.get('deep', 'false').strip().lower()
+    # Soportar tanto formato JSON como Form Data para evitar errores 400
+    if flask.request.is_json:
+        req_data = flask.request.get_json()
+        query = req_data.get('q', '').strip()
+        deep_s = bool(req_data.get('deep', False))
+    else:
+        query = flask.request.form.get('q', '').strip()
+        deep_s = 'true' == flask.request.form.get('deep', 'false').strip().lower()
 
-    if not query or query == '':
-        return abort(400, "Bad Request")
+    if not query:
+        return flask.jsonify({"error": "Bad Request: El término de búsqueda está vacío."}), 400
+
     try:
         knowledge = master.seatch_new_knowledge(query, deep_s)
         if knowledge and knowledge.ontologyes:
             db.save_knowledge(knowledge.ontologyes)
+            # Check if data is saved
             qids = db.get_id_of_term(query)
             if qids and len(qids) > 0:
-                return {"term_id": qids[0]}
+                return flask.jsonify({"term_id": qids[0]})
             else:
-                return abort(404, "Not Found")
+                return flask.jsonify({"error": "Not Found: No se encontró el QID generado."}), 404
         else:
-            return abort(400, "Bad Request")
+            return flask.jsonify({"error": "Bad Request: No se pudo extraer conocimiento para el término."}), 400
     except Exception as e:
-        return abort(400, str(e))
+        print(f"❌ Error interno al procesar término: {str(e)}")
+        return flask.jsonify({"error": str(e)}), 400
 
 @routes_api.route('/terms/<name_term>', methods=['POST'])
 def get_new_term(name_term):

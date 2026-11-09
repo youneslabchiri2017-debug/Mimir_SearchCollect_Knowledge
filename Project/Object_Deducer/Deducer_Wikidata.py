@@ -95,13 +95,16 @@ class Deducer_Wikidata(Deducer):
 
         return None
 
-    def deduce_object(self, term_obj):
+    def deduce_object(self, term_obj, lim = 1):
         qids = self.__search_entities__(term_obj.term)
         found_categories = []
         for qid in qids:
             categorias = self.__get_root_category__(qid)
             if categorias:
                 found_categories += categorias
+                lim -= 1
+                if lim == 0:
+                    break
         term_obj.set_categories(found_categories)
         self.__save_cache__()
         super().deduce_object(term_obj)

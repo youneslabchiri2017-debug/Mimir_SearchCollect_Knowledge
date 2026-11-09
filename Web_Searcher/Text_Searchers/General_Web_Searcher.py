@@ -11,7 +11,7 @@ class General_Web_Searcher(TextSearcher):
         TextSearcher.__init__(self)
         self.web_scrapper = HTML_Transformer()
 
-    def __search_in_pages__(self, urls, term, lim = 1):
+    def __search_in_pages__(self, urls, term, lim = 2, timeout = 20):
         tuples = []
         texts = []
 
@@ -30,7 +30,7 @@ class General_Web_Searcher(TextSearcher):
                 url = futuros_mapeados[futuro]
                 try:
                     # MÁXIMO 5 SEGUNDOS DE ESPERA POR PÁGINA
-                    txt = futuro.result(timeout=5)
+                    txt = futuro.result(timeout=timeout)
                     if txt:
                         texts.append(txt)
                 except TimeoutError:
@@ -45,7 +45,7 @@ class General_Web_Searcher(TextSearcher):
         if len(texts) > 0:
             for text in texts:
                 try:
-                    if lim >= 1:
+                    if lim > 0:
                         tuples += self.ollama_transformer.transform(text, term)
                         lim -= 1
                     else:
@@ -69,7 +69,7 @@ class General_Web_Searcher(TextSearcher):
             results = ddgs.text(search_query, max_results=max_res)
         return list(map(lambda x: x['href'], results))
 
-    def search(self, term, num_results=5):
+    def search(self, term, num_results=3):
         pages = self.seach_pages(term, num_results)
-        tuples = self.__search_in_pages__(pages, term)
+        tuples = self.__search_in_pages__(pages, term, num_results)
         return tuples

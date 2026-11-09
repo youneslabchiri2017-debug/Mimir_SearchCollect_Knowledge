@@ -21,13 +21,12 @@ class DB_Controller():
         # o cámbialo a rdfs:label (en minúscula) si usas el estándar.
         query = f"""
             PREFIX ns1: <http://mimir.org/rdf-schema/>
-            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-
-            SELECT ?s WHERE {{
-                # Buscamos de forma segura pasando el label de la BD a minúsculas
-                ?s ns1:Label ?label .
-                FILTER(LCASE(STR(?label)) = "{term_buscado}")
-            }}
+                PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+                
+                SELECT ?s ?label WHERE {{
+                    ?s ns1:Label ?label .
+                    FILTER(REGEX(STR(?label), "{term_buscado}", "i"))
+                }}
             """
 
         endpoint = self.url.replace("/statements", "")

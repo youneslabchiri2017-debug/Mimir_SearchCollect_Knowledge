@@ -83,6 +83,12 @@ class Ontology:
                 URIRef(type_url)
             ))
 
+        keys = data.keys()
+        for key in keys:
+            if key in data and len(data[key]) > 0:
+                dataset.add((main_subject, self.EXTRA["Label"], Literal(data[key][0][0])))
+                break
+
         for source, triples in data.items():
             # Ignorar fuentes desconocidas o sin datos
             if source not in self.SOURCE_GRAPHS or not triples:
@@ -117,4 +123,6 @@ class Ontology:
                     print(f"Error procesando fuente {source}, triple {trip}: {e}")
 
         # Retornamos el Dataset completo (contiene los gráficos con nombre)
+
+
         return dataset

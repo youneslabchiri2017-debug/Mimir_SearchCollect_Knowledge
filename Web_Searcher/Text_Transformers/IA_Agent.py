@@ -6,10 +6,6 @@ class Ollama_Transformer(Transformer):
     def __init__(self):
         self.model_name = "llama3.2:3b"
 
-        # ... [MANTÉN TUS PROMPTS ANTERIORES AQUÍ] ...
-
-        # NUEVO PROMPT: El Ojo (Extractor de Entidades)
-        # NUEVO PROMPT: El Ojo (Extractor Avanzado JSON)
         self.system_prompt_extractor = {
             "role": "system",
             "content": (
@@ -27,7 +23,7 @@ class Ollama_Transformer(Transformer):
                 "User: 'Tell me about the relationship between France and Spain' -> {\"intent\": \"relate\", \"entities\": [\"Francia\", \"España\"], \"context\": null}"
             )
         }
-        # SYSTEM PROMPT: Mimir's Personality (Optimized in English, responds in Spanish)
+
         self.system_prompt_mimir = {
             "role": "system",
             "content": (
@@ -46,32 +42,28 @@ class Ollama_Transformer(Transformer):
             )
         }
 
-        # NUEVO PROMPT: Extractor de relaciones y propiedades semánticas
         self.system_prompt_triples = {
             "role": "system",
             "content": (
                 "You are an expert knowledge graph extraction agent. Your job is to extract factual "
                 "attributes and semantic relationships from the provided text and output them in a STRICT JSON format.\n\n"
                 "CRITICAL RULES:\n"
-                "1. For each key fact found, extract the property name (use camelCase, e.g., 'birthDate', 'occupation', 'nationality', 'description') "
-                "and its corresponding text value.\n"
-                "2. Do not invent properties outside of the text context.\n"
-                "3. Output MUST be a valid JSON list of objects, where each object has 'property' and 'value'.\n\n"
+                "1. Extract property names in camelCase (e.g., 'birthDate', 'occupation', 'nationality', 'description') "
+                "and their corresponding values.\n"
+                "2. Do not invent facts outside of the text context.\n"
+                "3. Output MUST be a JSON object containing a 'properties' key with an array of objects.\n\n"
                 "EXAMPLE OUTPUT:\n"
-                "[\n"
-                "  {\"property\": \"name\", \"value\": \"Alan Turing\"},\n"
-                "  {\"property\": \"birthDate\", \"value\": \"1912-06-23\"},\n"
-                "  {\"property\": \"occupation\", \"value\": \"Mathematician and Logician\"}\n"
-                "]"
+                "{\n"
+                '  "properties": [\n'
+                '    {"property": "name", "value": "Alan Turing"},\n'
+                '    {"property": "birthDate", "value": "1912-06-23"},\n'
+                '    {"property": "occupation", "value": "Mathematician and Logician"}\n'
+                "  ]\n"
+                "}"
             )
         }
 
-    # ... [MANTÉN TUS FUNCIONES _clean_input_text, _chunk_text y __extract_triples__ AQUÍ] ...
-
     def extract_entity_data(self, user_input):
-        """
-        Lee la frase y devuelve un diccionario con las entidades, la intención y el contexto.
-        """
         messages = [
             self.system_prompt_extractor,
             {"role": "user", "content": user_input}
@@ -80,7 +72,7 @@ class Ollama_Transformer(Transformer):
             response = ollama.chat(
                 model=self.model_name,
                 messages=messages,
-                format='json' # Forzamos salida estructurada
+                format='json'
             )
             data = json.loads(response['message']['content'])
             return data
@@ -88,20 +80,17 @@ class Ollama_Transformer(Transformer):
             print(f"Error extrayendo datos: {e}")
             return None
 
-    def reverse_transform(self, data, term, text = ""):
-        """
-        La Boca de Mimir. Redacta el texto final basado en los datos.
-        """
+    def reverse_transform(self, data, term, text=""):
         contexto_datos = ""
         for id in data:
-            contexto_datos += f"\nEntity: {id}"
+            contexto_datos += f"\nEntity: {id}\n"
             for tuple in data[id]:
                 contexto_datos += f"{tuple['pt']['value']} - {tuple['o']['value']}\n"
 
         user_prompt = f"{text}.\nUse ONLY this data:\n{contexto_datos}"
 
         messages = [
-            self.system_prompt_mimir,  # Asegúrate de tener este prompt del código anterior
+            self.system_prompt_mimir,
             {"role": "user", "content": user_prompt}
         ]
 
@@ -115,72 +104,75 @@ class Ollama_Transformer(Transformer):
             return f"El pozo del conocimiento falla... Error: {e}"
 
     def _clean_input_text(self, text):
-        """
-        Limpia el texto bruto obtenido del raspado web eliminando saltos de línea duplicados,
-        caracteres especiales residuales y espaciados innecesarios para ahorrar tokens.
-        """
         if not text:
             return ""
-        # Normalizar caracteres unicode, remover etiquetas o metadatos y excesos de espacios
-        text = re.sub(r'<[^>]+>', '', text)  # Eliminar remanentes HTML si los hay
+        text = re.sub(r'<[^>]+>', '', text)
         text = re.sub(r'[\r\n\t]+', ' ', text)
         text = re.sub(r'\s+', ' ', text)
         return text.strip()
 
-    def _chunk_text(self, text, max_chars=3000):
-        """
-        Divide un texto extenso en fragmentos más pequeños (chunks) para asegurar
-        que no se desborde la ventana de contexto de Ollama (Llama 3.2).
-        """
-        cleaned = self._clean_input_text(text)
-        # Dividimos de forma segura por oraciones aproximadas o cortes de caracteres
-        chunks = []
-        for i in range(0, len(cleaned), max_chars):
-            chunks.append(cleaned[i:i + max_chars])
-        return chunks
-
     def transform(self, raw_text, term):
         """
-        Procesa un bloque de texto completo, lo limpia, lo fragmenta y utiliza
-        Ollama para extraer todas las tuplas/propiedades semánticas posibles en formato lista.
+        Procesa el texto completo de una sola vez (sin fragmentación) utilizando
+        la gran ventana de contexto del modelo, extrayendo las tuplas semánticas de forma segura.
         """
-        text_chunks = self._chunk_text(raw_text)
+        cleaned_text = self._clean_input_text(raw_text)
+        if not cleaned_text:
+            return []
+
+        messages = [
+            self.system_prompt_triples,
+            {"role": "user", "content": f"Extract properties from this text for the term '{term}':\n{cleaned_text}"}
+        ]
+
         all_extracted_tuples = []
+        seen_tuples = set()
 
-        for chunk in text_chunks:
-            if len(chunk) < 50:  # Ignorar fragmentos irrelevantes o muy cortos
-                continue
+        try:
+            response = ollama.chat(
+                model=self.model_name,
+                messages=messages,
+                format='json'
+            )
 
-            messages = [
-                self.system_prompt_triples,
-                {"role": "user", "content": f"Extract properties from this text chunk:\n{chunk} for this term '{term}'"}
-            ]
+            content = response['message']['content'].strip()
 
-            try:
-                response = ollama.chat(
-                    model=self.model_name,
-                    messages=messages,
-                    format='json'  # Forzamos al motor a responder bajo una estructura JSON estricta
-                )
+            # Limpieza de bloques markdown ```json ... ``` si los hubiere
+            json_match = re.search(r'\{.*\}|\[.*\]', content, re.DOTALL)
+            if json_match:
+                content = json_match.group(0)
 
-                # Deserializar la respuesta del fragmento
-                chunk_data = json.loads(response['message']['content'])['properties']
+            parsed_json = json.loads(content)
+            extracted_list = []
 
-                # Validamos que sea una lista antes de extender los resultados globales
-                if isinstance(chunk_data, list):
-                    for item in chunk_data:
-                        try:
-                            all_extracted_tuples.append([term, str(item['property']).strip(), str(item['value']).strip()])
-                        except Exception as e:
-                            print(e)
+            # Deserialización resiliente para adaptarse a la respuesta del modelo
+            if isinstance(parsed_json, dict):
+                if 'properties' in parsed_json and isinstance(parsed_json['properties'], list):
+                    extracted_list = parsed_json['properties']
+                elif 'triples' in parsed_json and isinstance(parsed_json['triples'], list):
+                    extracted_list = parsed_json['triples']
+                else:
+                    for k, v in parsed_json.items():
+                        if isinstance(v, (str, int, float)):
+                            extracted_list.append({"property": k, "value": str(v)})
+            elif isinstance(parsed_json, list):
+                extracted_list = parsed_json
 
-            except json.JSONDecodeError:
-                print("⚠️ Error al decodificar el JSON de un fragmento. Saltando chunk.")
-                continue
-            except Exception as e:
-                print(f"❌ Error en la llamada de extracción con Ollama: {e}")
-                continue
+            # Procesamiento y formateo de las tuplas evitando duplicados
+            for item in extracted_list:
+                if isinstance(item, dict) and 'property' in item and 'value' in item:
+                    p_val = str(item['property']).strip().replace(' ', '')
+                    v_val = str(item['value']).strip()
 
-        # Eliminar tuplas duplicadas idénticas para optimizar la carga en GraphDB
+                    if p_val and v_val:
+                        tuple_key = (term, p_val, v_val)
+                        if tuple_key not in seen_tuples:
+                            seen_tuples.add(tuple_key)
+                            all_extracted_tuples.append([term, p_val, v_val])
+
+        except json.JSONDecodeError as e:
+            print(f"⚠️ Error al decodificar JSON del texto completo: {e}")
+        except Exception as e:
+            print(f"❌ Error en la llamada con Ollama: {e}")
 
         return all_extracted_tuples
