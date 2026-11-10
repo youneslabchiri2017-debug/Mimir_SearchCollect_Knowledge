@@ -19,7 +19,7 @@ class Master_Knowledge():
             self.deducer.deduce_object(new_term)
             self.search.search_by_category(new_term)
             self.filter.filter(new_term)
-            self.k_combiner.create_and_save_oltologys(new_term, save_g=False)
+            self.k_combiner.create_and_save_oltologys(new_term)
             return new_term
         except Exception as e:
             return None

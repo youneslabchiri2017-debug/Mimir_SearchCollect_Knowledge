@@ -16,7 +16,6 @@ def mimir_chatbot():
 def knowledge_search():
     return flask.render_template('knowledge_search.html')
 
-
 @routes.route('/mimir_wiki/<qid>')
 def mimir_wiki(qid):
     try:

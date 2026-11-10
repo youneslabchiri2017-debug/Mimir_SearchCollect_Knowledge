@@ -15,7 +15,7 @@ class Ontology_Master:
         self.db_acces = DB_Controller()
 
     # Se tiene que crear un nuevo grafo a partir del objeto "Termino"
-    def create_and_save_oltologys(self, terms, save_g = True):
+    def create_and_save_oltologys(self, terms, save_g = False):
         for key_id in terms.filtered_data:
             try:
                 cat = key_id.split('-')[0]
